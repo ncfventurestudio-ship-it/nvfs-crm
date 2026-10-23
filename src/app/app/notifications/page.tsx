@@ -21,6 +21,7 @@ import {
   UserCheck,
   Building,
   FileText,
+  KeyRound,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -136,6 +137,10 @@ export default function NotificationsCenterPage() {
         return <Clock className="h-4 w-4 text-blue-400" />;
       case "COMPLIANCE_DEADLINE":
         return <ShieldAlert className="h-4 w-4 text-rose-400" />;
+      case "PASSWORD_RESET_REQUEST":
+        return <KeyRound className="h-4 w-4 text-amber-400" />;
+      case "PASSWORD_RESET_COMPLETED":
+        return <KeyRound className="h-4 w-4 text-emerald-400" />;
       default:
         return <Sparkles className="h-4 w-4 text-blue-400" />;
     }

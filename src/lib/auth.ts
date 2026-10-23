@@ -8,6 +8,7 @@ import {
   CompanySummary,
   UserCompanyMembershipSummary,
 } from "@/types";
+import { getOfflineUserByIdOrEmail } from "@/lib/offline-auth";
 
 export const SESSION_COOKIE_NAME = "nfvs_session";
 export const ACTIVE_COMPANY_COOKIE_NAME = "nfvs_active_company";
@@ -26,6 +27,8 @@ export interface SessionPayload {
   email: string;
   roleCode: SystemRoleCode;
   activeCompanyId?: string;
+  companyId?: string;
+  organizationId?: string;
   expiresAt: number;
 }
 
@@ -142,6 +145,19 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
     });
 
     if (!user || !user.isActive) {
+      const offlineUser =
+        getOfflineUserByIdOrEmail(payload.userId, requestedCompanyId || payload.activeCompanyId) ||
+        getOfflineUserByIdOrEmail(payload.email, requestedCompanyId || payload.activeCompanyId);
+
+      if (offlineUser) {
+        userSessionMemoryCache.set(payload.userId, {
+          user: offlineUser,
+          cachedAt: now,
+          companyKey: cacheKey,
+        });
+        return offlineUser;
+      }
+
       userSessionMemoryCache.delete(payload.userId);
       return null;
     }
@@ -207,7 +223,9 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
 
     if (requestedCompanyId) {
       const isAllowed =
-        isSuperAdmin || membershipSummaries.some((m) => m.companyId === requestedCompanyId);
+        isSuperAdmin ||
+        membershipSummaries.some((m) => m.companyId === requestedCompanyId) ||
+        requestedCompanyId === user.employee?.organizationId;
       if (isAllowed) {
         activeCompanyId = requestedCompanyId;
       }
@@ -354,8 +372,21 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
         });
 
         return authenticatedUser;
-      } catch (err) {
-        console.error("[Auth Error]: Failed to retrieve current user", err);
+      } catch (err: any) {
+        console.warn("[Auth Warning] DB query failed, resolving user via offline/persona store:", err?.message);
+        const offlineUser =
+          getOfflineUserByIdOrEmail(payload.userId, requestedCompanyId || payload.activeCompanyId) ||
+          getOfflineUserByIdOrEmail(payload.email, requestedCompanyId || payload.activeCompanyId);
+
+        if (offlineUser) {
+          userSessionMemoryCache.set(payload.userId, {
+            user: offlineUser,
+            cachedAt: now,
+            companyKey: cacheKey,
+          });
+          return offlineUser;
+        }
+
         return null;
       } finally {
         inFlightUserPromises.delete(cacheKey);

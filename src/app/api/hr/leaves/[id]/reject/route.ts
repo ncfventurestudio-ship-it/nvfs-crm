@@ -9,15 +9,16 @@ export async function POST(
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) {
+    if (!user) {
       return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
+    const approverEmployeeId = user.employee?.id || user.id;
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const reason = body.reason || "Operational constraints";
 
-    const updated = await LeaveService.rejectLeaveRequest(id, user.employee.id, reason);
+    const updated = await LeaveService.rejectLeaveRequest(id, approverEmployeeId, reason);
     return successResponse(updated);
   } catch (error: any) {
     console.error("[Leave Reject Error]:", error);

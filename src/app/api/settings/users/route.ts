@@ -115,7 +115,10 @@ export async function POST(req: NextRequest) {
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
       const count = await db.employee.count();
-      const employeeNumber = `EMP-${String(count + 1).padStart(4, "0")}`;
+      const isVS = (org.code || "").toUpperCase() === "NFVS" || (org.name || "").toLowerCase().includes("venture studio");
+      const orgPrefix = isVS ? "NFVS" : "NF";
+      const year = new Date().getFullYear();
+      const employeeNumber = `${orgPrefix}-${year}-01-${String(count + 1).padStart(4, "0")}`;
 
       const newUser = await db.user.create({
         data: {

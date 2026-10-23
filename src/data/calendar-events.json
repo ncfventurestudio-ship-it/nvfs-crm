@@ -1,0 +1,184 @@
+[
+  {
+    "id": "evt_1792755844463_d16xk",
+    "organizationId": "org_naree_foundation",
+    "creatorId": "emp_naree_coo",
+    "title": "fgdgdgfd",
+    "description": "dgdfgdgffg",
+    "type": "MEETING",
+    "startDate": "2026-10-23T06:13:00.000Z",
+    "endDate": "2026-10-23T07:13:00.000Z",
+    "isAllDay": false,
+    "location": "fgdgdgdgd",
+    "meetUrl": null,
+    "departmentId": null,
+    "attendees": "[]",
+    "relatedTaskId": null,
+    "creator": {
+      "firstName": "Operations",
+      "lastName": "Director"
+    },
+    "createdAt": "2026-10-23T11:44:04.463Z",
+    "updatedAt": "2026-10-23T11:44:04.463Z"
+  },
+  {
+    "id": "evt_1792750196090_2hp9l",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_admin",
+    "title": "Executive Operations Quarterly Sync",
+    "description": "Review of operational efficiency and cross-department KPIs",
+    "type": "MEETING",
+    "startDate": "2026-10-23T11:09:55.668Z",
+    "endDate": "2026-10-23T12:09:55.668Z",
+    "isAllDay": false,
+    "location": "Executive Suite 401 & Online",
+    "meetUrl": "https://meet.nfvs.internal/ops-sync",
+    "departmentId": null,
+    "attendees": null,
+    "relatedTaskId": null,
+    "creator": {
+      "firstName": "System",
+      "lastName": "Admin"
+    },
+    "createdAt": "2026-10-23T10:09:56.090Z",
+    "updatedAt": "2026-10-23T10:09:56.090Z"
+  },
+  {
+    "id": "evt_1792750118146_xp1yz",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_admin",
+    "title": "Executive Operations Quarterly Sync",
+    "description": "Review of operational efficiency and cross-department KPIs",
+    "type": "MEETING",
+    "startDate": "2026-10-23T11:08:37.712Z",
+    "endDate": "2026-10-23T12:08:37.712Z",
+    "isAllDay": false,
+    "location": "Executive Suite 401 & Online",
+    "meetUrl": "https://meet.nfvs.internal/ops-sync",
+    "departmentId": null,
+    "attendees": null,
+    "relatedTaskId": null,
+    "creator": {
+      "firstName": "System",
+      "lastName": "Admin"
+    },
+    "createdAt": "2026-10-23T10:08:38.146Z",
+    "updatedAt": "2026-10-23T10:08:38.146Z"
+  },
+  {
+    "id": "evt_q4_exec_review",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_coo",
+    "title": "Executive Operations & Performance Review",
+    "description": "Bi-weekly executive operational sync on venture portfolio delivery and cross-functional KPIs.",
+    "type": "MEETING",
+    "startDate": "2026-10-24T09:58:41.907Z",
+    "endDate": "2026-10-24T10:58:41.907Z",
+    "isAllDay": false,
+    "location": "Executive Boardroom A (Floor 4) & Virtual",
+    "meetUrl": "https://meet.nfvs.internal/ops-exec",
+    "departmentId": "dept_ops",
+    "attendees": "[\"emp_nfvs_coo\",\"emp_nfvs_gouri_029\"]",
+    "creator": {
+      "firstName": "Operations",
+      "lastName": "Director"
+    },
+    "createdAt": "2026-10-23T09:58:41.907Z",
+    "updatedAt": "2026-10-23T09:58:41.907Z"
+  },
+  {
+    "id": "evt_all_hands_q4",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_ceo",
+    "title": "Global All-Hands & Venture Studio Townhall",
+    "description": "Company-wide presentation on upcoming product launches, social impact milestones, and employee recognitions.",
+    "type": "COMPANY_EVENT",
+    "startDate": "2026-10-27T09:58:41.907Z",
+    "endDate": "2026-10-27T11:58:41.907Z",
+    "isAllDay": false,
+    "location": "Main Auditorium & Global Zoom Room",
+    "meetUrl": "https://meet.nfvs.internal/townhall",
+    "departmentId": null,
+    "creator": {
+      "firstName": "Chief",
+      "lastName": "Executive"
+    },
+    "createdAt": "2026-10-23T09:58:41.907Z",
+    "updatedAt": "2026-10-23T09:58:41.907Z"
+  },
+  {
+    "id": "evt_client_demo_vertex",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_coo",
+    "title": "Enterprise Client Demo: Strategic Supply Chain Partner",
+    "description": "Demonstration of CRM enterprise logistics portal and inventory automation pipeline.",
+    "type": "CLIENT_MEETING",
+    "startDate": "2026-10-25T09:58:41.907Z",
+    "endDate": "2026-10-25T10:58:41.907Z",
+    "isAllDay": false,
+    "location": "Client Relations Suite (Level 2)",
+    "meetUrl": "https://meet.nfvs.internal/client-demo",
+    "creator": {
+      "firstName": "Operations",
+      "lastName": "Director"
+    },
+    "createdAt": "2026-10-23T09:58:41.907Z",
+    "updatedAt": "2026-10-23T09:58:41.907Z"
+  },
+  {
+    "id": "evt_tech_sync_arch",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_cto",
+    "title": "Engineering Architecture & Cloud Security Sync",
+    "description": "Architecture sync discussing database resilience, audit trail isolation, and latency improvements.",
+    "type": "MEETING",
+    "startDate": "2026-10-28T09:58:41.907Z",
+    "endDate": "2026-10-28T10:58:41.907Z",
+    "isAllDay": false,
+    "location": "Engineering Innovation Hub (Floor 3)",
+    "meetUrl": "https://meet.nfvs.internal/eng-sync",
+    "departmentId": "dept_eng",
+    "creator": {
+      "firstName": "Technology",
+      "lastName": "Director"
+    },
+    "createdAt": "2026-10-23T09:58:41.907Z",
+    "updatedAt": "2026-10-23T09:58:41.907Z"
+  },
+  {
+    "id": "evt_statutory_gst",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_cfo",
+    "title": "Statutory Tax & Compliance Filing Deadline",
+    "description": "Monthly GST, TDS reconciliation, and statutory auditor sign-off.",
+    "type": "DEADLINE",
+    "startDate": "2026-10-30T09:58:41.907Z",
+    "endDate": "2026-10-30T09:58:41.907Z",
+    "isAllDay": true,
+    "location": "Finance & Accounts Wing",
+    "creator": {
+      "firstName": "Finance",
+      "lastName": "Director"
+    },
+    "createdAt": "2026-10-23T09:58:41.907Z",
+    "updatedAt": "2026-10-23T09:58:41.907Z"
+  },
+  {
+    "id": "evt_national_youth_day",
+    "organizationId": "org_nfvs_studio",
+    "creatorId": "emp_nfvs_hr",
+    "title": "National Innovation & Social Impact Observance",
+    "description": "Observance of national youth empowerment in entrepreneurship and grassroots venture building.",
+    "type": "CURRENT_AFFAIR",
+    "startDate": "2026-10-26T09:58:41.907Z",
+    "endDate": "2026-10-26T09:58:41.907Z",
+    "isAllDay": true,
+    "location": "Campus-Wide",
+    "creator": {
+      "firstName": "HR",
+      "lastName": "Officer"
+    },
+    "createdAt": "2026-10-23T09:58:41.907Z",
+    "updatedAt": "2026-10-23T09:58:41.907Z"
+  }
+]

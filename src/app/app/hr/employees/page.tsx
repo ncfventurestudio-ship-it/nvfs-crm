@@ -17,6 +17,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Dialog } from "@/components/ui/dialog";
 import {
   Users,
   UserPlus,
@@ -30,6 +31,17 @@ import {
   CheckCircle2,
   Landmark,
   Trash2,
+  Mail,
+  Share2,
+  Copy,
+  Check,
+  Send,
+  Inbox,
+  ShieldCheck,
+  Sparkles,
+  Clock,
+  AlertCircle,
+  FileText,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { HrNav } from "@/modules/hr/components/hr-nav";
@@ -163,6 +175,9 @@ export default function EmployeeDirectoryPage() {
     lastName: "",
     email: "",
     phone: "",
+    dateOfBirth: "",
+    aadhaarNumber: "",
+    hireDate: new Date().toISOString().split("T")[0],
     designation: "",
     departmentId: "",
     managerId: "",
@@ -175,6 +190,122 @@ export default function EmployeeDirectoryPage() {
     roleCode: "EMPLOYEE",
     immediateActive: false,
   });
+
+  // Pre-onboarding Candidate Submissions state
+  const [activeTab, setActiveTab] = useState<"directory" | "submissions">("directory");
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
+
+  // Candidate Link Share Modal state
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  const fetchSubmissions = useCallback(async () => {
+    try {
+      setSubmissionsLoading(true);
+      const companyParam = currentUser?.activeCompany?.id
+        ? `?organizationId=${currentUser.activeCompany.id}`
+        : "";
+      const res = await fetch(`/api/hr/pre-onboarding${companyParam}`, {
+        headers: currentUser?.activeCompany?.id
+          ? { "x-company-id": currentUser.activeCompany.id }
+          : {},
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setSubmissions(json.data);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load pre-onboarding submissions:", err);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  }, [currentUser?.activeCompany?.id]);
+
+  useEffect(() => {
+    fetchSubmissions();
+  }, [fetchSubmissions]);
+
+  const handleOnboardSubmission = (sub: any) => {
+    setSelectedSubmission(sub);
+    setFormData({
+      firstName: sub.firstName || "",
+      lastName: sub.lastName || "",
+      email: sub.email || "",
+      phone: sub.phone || "",
+      dateOfBirth: sub.dateOfBirth ? new Date(sub.dateOfBirth).toISOString().split("T")[0] : "",
+      aadhaarNumber: sub.aadhaarNumber || "",
+      hireDate: new Date().toISOString().split("T")[0],
+      designation: "",
+      departmentId: "",
+      managerId: "",
+      employmentType: "FULL_TIME",
+      workMode: "ON_SITE",
+      location: sub.currentAddress || sub.city || "Headquarters (Mumbai)",
+      emergencyContact: sub.emergencyContactName
+        ? `${sub.emergencyContactName}${sub.emergencyContactPhone ? ` (${sub.emergencyContactPhone})` : ""}`
+        : "",
+      createSystemAccount: true,
+      loginPassword: "",
+      roleCode: "EMPLOYEE",
+      immediateActive: false,
+    });
+    setIsDrawerOpen(true);
+  };
+
+  const handleDismissSubmission = async (subId: string) => {
+    if (!confirm("Are you sure you want to dismiss this candidate submission?")) return;
+    try {
+      await fetch(`/api/hr/pre-onboarding/${subId}`, {
+        method: "DELETE",
+      });
+      fetchSubmissions();
+    } catch (err) {
+      console.error("Failed to dismiss submission:", err);
+    }
+  };
+
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail) return;
+    setInviteLoading(true);
+    setInviteSuccess(null);
+    setInviteError(null);
+
+    try {
+      const activeCode = (currentUser?.activeCompany?.code || "").toUpperCase() === "NAREE" ? "NF" : "NFVS";
+      const formUrl = `${(process.env.NEXT_PUBLIC_APP_URL || "https://nfventurestudio.netlify.app").replace(/\/+$/, "")}/onboard?org=${activeCode}`;
+      const res = await fetch("/api/hr/pre-onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateEmail: inviteEmail,
+          candidateName: inviteName,
+          companyName: currentUser?.activeCompany?.name,
+          formUrl,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to send email invite");
+      }
+      setInviteSuccess(`Pre-onboarding form link successfully forwarded to ${inviteEmail}`);
+      setInviteEmail("");
+      setInviteName("");
+    } catch (err: any) {
+      setInviteError(err.message || "Failed to send invite");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -215,9 +346,33 @@ export default function EmployeeDirectoryPage() {
 
   // Isolate strictly by active company
   const currentOrgId = currentUser?.activeCompany?.id;
-  const scopedEmployees = currentOrgId
-    ? employees.filter((e) => !e.organizationId || e.organizationId === currentOrgId)
-    : employees;
+  const activeOrgCode = (currentUser?.activeCompany?.code || "").toUpperCase();
+  const activeOrgName = (currentUser?.activeCompany?.name || "").toLowerCase();
+  const isNareeCompany =
+    currentOrgId === "org_naree_foundation" ||
+    activeOrgCode === "NAREE" ||
+    (activeOrgName.includes("foundation") && !activeOrgName.includes("venture"));
+
+  const scopedEmployees = employees.filter((e) => {
+    if (!currentOrgId && !activeOrgCode) return true;
+    const empOrg = (e.organizationId || "").toLowerCase();
+    const empNum = (e.employeeNumber || "").toUpperCase();
+    if (isNareeCompany) {
+      return (
+        empOrg === "org_naree_foundation" ||
+        empOrg === "naree" ||
+        empNum.startsWith("NF-")
+      );
+    }
+    // NFVS Studio / Corporate
+    return (
+      empOrg === "org_nfvs_studio" ||
+      empOrg === "nfvs-studio" ||
+      empOrg === "org_nfvs_corp" ||
+      empNum.startsWith("NFVS-") ||
+      (!empOrg.includes("naree") && !empNum.startsWith("NF-"))
+    );
+  });
 
   // Split into leadership and staff
   const leadershipList = scopedEmployees.filter(
@@ -229,6 +384,45 @@ export default function EmployeeDirectoryPage() {
   const staffTotalPages = Math.max(1, Math.ceil(staffList.length / 10));
   const safePage = Math.min(Math.max(1, page), staffTotalPages);
   const displayedStaff = staffList.slice((safePage - 1) * 10, safePage * 10);
+
+  // Real-time structured Employee ID calculation:
+  // [COMPANY]-[JOINING_YEAR]-[BIRTH_DAY]-[AADHAAR_LAST_4]
+  const isVentureStudioPreview =
+    activeOrgCode === "NFVS" ||
+    activeOrgName.includes("venture studio") ||
+    activeOrgName.includes("studio");
+  const companyPrefixPreview = isVentureStudioPreview ? "NFVS" : "NF";
+
+  const joiningYearPreview = formData.hireDate
+    ? new Date(formData.hireDate).getFullYear() || new Date().getFullYear()
+    : new Date().getFullYear();
+
+  let birthDayPreview = "DD";
+  if (formData.dateOfBirth) {
+    const m =
+      formData.dateOfBirth.match(/^\d{4}-\d{2}-(\d{1,2})/) ||
+      formData.dateOfBirth.match(/^(\d{1,2})[-\/]/);
+    if (m) {
+      birthDayPreview = m[1];
+    } else {
+      const d = new Date(formData.dateOfBirth);
+      if (!isNaN(d.getTime())) {
+        birthDayPreview = String(d.getDate()).padStart(2, "0");
+      }
+    }
+  }
+
+  let aadhaarLast4Preview = "XXXX";
+  if (formData.aadhaarNumber) {
+    const digits = formData.aadhaarNumber.replace(/\D/g, "");
+    if (digits.length >= 4) {
+      aadhaarLast4Preview = digits.slice(-4);
+    } else if (digits.length > 0) {
+      aadhaarLast4Preview = digits.padStart(4, "0");
+    }
+  }
+
+  const generatedIdPreview = `${companyPrefixPreview}-${joiningYearPreview}-${birthDayPreview}-${aadhaarLast4Preview}`;
 
   useEffect(() => {
     fetchEmployees();
@@ -287,6 +481,9 @@ export default function EmployeeDirectoryPage() {
         lastName: "",
         email: "",
         phone: "",
+        dateOfBirth: "",
+        aadhaarNumber: "",
+        hireDate: new Date().toISOString().split("T")[0],
         designation: "",
         departmentId: "",
         managerId: "",
@@ -300,8 +497,21 @@ export default function EmployeeDirectoryPage() {
         immediateActive: false,
       });
 
+      if (selectedSubmission?.id) {
+        await fetch(`/api/hr/pre-onboarding/${selectedSubmission.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "ONBOARDED",
+            createdEmployeeId: createdEmp.id,
+          }),
+        }).catch(() => {});
+        setSelectedSubmission(null);
+        fetchSubmissions();
+      }
+
       if (createdEmp?.id) {
-        window.location.href = `/app/hr/employees/${createdEmp.id}`;
+        window.location.href = `/app/hr/employees/${createdEmp.id}?newlyCreated=true`;
       } else {
         fetchEmployees();
       }
@@ -365,11 +575,23 @@ export default function EmployeeDirectoryPage() {
               <Network className="h-3.5 w-3.5 text-blue-400" />
               <span>Org Hierarchy Tree</span>
             </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsShareModalOpen(true)}
+              className="gap-1.5 border-blue-500/40 text-blue-300 hover:bg-blue-950/40"
+            >
+              <Share2 className="h-3.5 w-3.5 text-blue-400" />
+              <span>Candidate Form Link</span>
+            </Button>
             {!isSuperAdmin && (
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => setIsDrawerOpen(true)}
+                onClick={() => {
+                  setSelectedSubmission(null);
+                  setIsDrawerOpen(true);
+                }}
                 className="gap-1.5"
               >
                 <UserPlus className="h-3.5 w-3.5" />
@@ -446,7 +668,201 @@ export default function EmployeeDirectoryPage() {
         </div>
       )}
 
-      {/* Filter and Search Bar */}
+      {/* View Switcher: Staff Directory vs Candidate Pre-Onboarding Queue */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("directory")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "directory"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+            }`}
+          >
+            <Users className="h-3.5 w-3.5" />
+            <span>Staff Directory ({staffList.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("submissions")}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "submissions"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+            }`}
+          >
+            <Inbox className="h-3.5 w-3.5" />
+            <span>Candidate Intake Queue</span>
+            {submissions.filter((s) => s.status === "PENDING_REVIEW").length > 0 ? (
+              <span className="rounded-full bg-amber-400 text-slate-950 px-2 py-0.5 text-[10px] font-bold animate-pulse">
+                {submissions.filter((s) => s.status === "PENDING_REVIEW").length} Pending
+              </span>
+            ) : (
+              <span className="rounded-full bg-slate-800 text-slate-400 px-1.5 py-0.2 text-[10px] font-mono">
+                {submissions.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsShareModalOpen(true)}
+            className="gap-1.5 text-xs text-blue-300 border-blue-500/30 hover:bg-blue-950/40"
+          >
+            <Share2 className="h-3.5 w-3.5 text-blue-400" />
+            <span>Forward Link to Candidate</span>
+          </Button>
+        </div>
+      </div>
+
+      {activeTab === "submissions" ? (
+        /* Candidate Intake Queue View */
+        <Card>
+          <CardContent className="p-0">
+            {submissionsLoading ? (
+              <LoadingState message="Loading candidate pre-onboarding submissions..." />
+            ) : submissions.length === 0 ? (
+              <EmptyState
+                icon={Inbox}
+                title="No candidate submissions yet"
+                description="When candidates fill out your pre-onboarding link, their submitted details will automatically arrive here for review and onboarding."
+                action={{
+                  label: "Forward Form Link",
+                  onClick: () => setIsShareModalOpen(true),
+                }}
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Candidate Details</TableHead>
+                    <TableHead>Date of Birth &amp; Identity</TableHead>
+                    <TableHead>Projected ID</TableHead>
+                    <TableHead>Contact &amp; Location</TableHead>
+                    <TableHead>Submitted Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {submissions.map((sub) => {
+                    const isPending = sub.status === "PENDING_REVIEW";
+                    const isNF = (sub.organization?.code || "").toUpperCase() === "NAREE";
+                    const prefix = isNF ? "NF" : "NFVS";
+                    const year = new Date().getFullYear();
+                    let bDay = "01";
+                    if (sub.dateOfBirth) {
+                      bDay = String(new Date(sub.dateOfBirth).getDate()).padStart(2, "0");
+                    }
+                    let a4 = "0000";
+                    if (sub.aadhaarNumber) {
+                      const d = sub.aadhaarNumber.replace(/\D/g, "");
+                      if (d.length >= 4) a4 = d.slice(-4);
+                    }
+                    const projectedId = `${prefix}-${year}-${bDay}-${a4}`;
+
+                    return (
+                      <TableRow key={sub.id} className="hover:bg-slate-800/40">
+                        <TableCell>
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-9 w-9 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center font-bold text-xs text-blue-300">
+                              {sub.firstName?.[0]}{sub.lastName?.[0]}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-white text-xs">
+                                {sub.firstName} {sub.lastName}
+                              </div>
+                              <div className="text-[11px] text-slate-400 font-mono">
+                                {sub.email}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-0.5 text-xs">
+                            <div className="text-slate-200">
+                              DOB: <span className="font-mono text-blue-400">{sub.dateOfBirth ? formatDate(sub.dateOfBirth) : "Not set"}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-mono">
+                              Aadhaar: {sub.aadhaarNumber || "N/A"}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50">
+                            {projectedId}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs text-slate-300">
+                            <div>{sub.phone || "No phone"}</div>
+                            <div className="text-[11px] text-slate-400 truncate max-w-[180px]">
+                              {sub.city ? `${sub.city}, ${sub.state || ""}` : sub.currentAddress || "India"}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-400">
+                          {formatDate(sub.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          {isPending ? (
+                            <Badge variant="warning" size="sm">
+                              Pending Review
+                            </Badge>
+                          ) : (
+                            <Badge variant="success" size="sm">
+                              Onboarded
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {isPending ? (
+                              <>
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => handleOnboardSubmission(sub)}
+                                  className="gap-1 text-xs px-2.5 py-1"
+                                >
+                                  <UserPlus className="h-3 w-3" />
+                                  <span>Review &amp; Onboard</span>
+                                </Button>
+                                <button
+                                  onClick={() => handleDismissSubmission(sub.id)}
+                                  className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                  title="Dismiss submission"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            ) : sub.createdEmployeeId ? (
+                              <Link
+                                href={`/app/hr/employees/${sub.createdEmployeeId}`}
+                                className="inline-flex items-center gap-1 text-xs text-blue-400 hover:underline"
+                              >
+                                <span>View Dossier</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </Link>
+                            ) : (
+                              <span className="text-xs text-slate-500">Processed</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-3">
         <div className="flex items-center gap-2">
           <Users className="h-3.5 w-3.5 text-slate-400" />
@@ -667,6 +1083,8 @@ export default function EmployeeDirectoryPage() {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
 
       {/* Add Employee Drawer */}
       <Drawer
@@ -721,6 +1139,63 @@ export default function EmployeeDirectoryPage() {
             </p>
           </div>
 
+          {selectedSubmission && (
+            <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-200 text-xs space-y-1.5 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-semibold text-white">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Candidate Pre-Onboarding Data Loaded</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSubmission(null)}
+                  className="text-[10px] text-slate-400 hover:text-white underline cursor-pointer"
+                >
+                  Clear link
+                </button>
+              </div>
+              <p className="text-[11px] text-emerald-300/80 leading-relaxed">
+                Candidate <strong>{selectedSubmission.firstName} {selectedSubmission.lastName}</strong> ({selectedSubmission.email}) has filled their personal details, date of birth, and Aadhaar card. Please assign official <strong>Department</strong>, <strong>Designation</strong>, and <strong>Line Manager</strong> below to issue credentials.
+              </p>
+            </div>
+          )}
+
+          {/* Live Structured Employee ID Preview Card */}
+          <div className="rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/60 via-slate-900 to-indigo-950/50 p-3.5 space-y-2.5 shadow-md">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Official Employee ID Preview
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-900/60 border border-blue-700/50 text-blue-200">
+                {companyPrefixPreview === "NFVS" ? "NFVS Studio" : "Naree Foundation"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between bg-black/50 rounded-lg px-3.5 py-2.5 border border-blue-500/25">
+              <span className="text-xs text-slate-400">Auto-Generated ID:</span>
+              <span className="text-base font-bold font-mono text-emerald-400 tracking-wider">
+                {generatedIdPreview}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+              <span>
+                <strong className="text-blue-300 font-mono">[{companyPrefixPreview}]</strong> Company
+              </span>
+              <span>•</span>
+              <span>
+                <strong className="text-blue-300 font-mono">[{joiningYearPreview}]</strong> Joining Year
+              </span>
+              <span>•</span>
+              <span>
+                <strong className="text-blue-300 font-mono">[{birthDayPreview}]</strong> Birthday Day
+              </span>
+              <span>•</span>
+              <span>
+                <strong className="text-blue-300 font-mono">[{aadhaarLast4Preview}]</strong> Aadhaar Last 4
+              </span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="First Name"
@@ -738,6 +1213,42 @@ export default function EmployeeDirectoryPage() {
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Date of Birth *"
+              type="date"
+              value={formData.dateOfBirth}
+              onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+              required
+            />
+            <Input
+              label="Aadhaar Card Number (12 Digits) *"
+              value={formData.aadhaarNumber}
+              onChange={(e) => {
+                const cleaned = e.target.value.replace(/[^\d\s]/g, "");
+                setFormData({ ...formData, aadhaarNumber: cleaned });
+              }}
+              placeholder="e.g. 1234 5678 8999"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Joining / Hire Date *"
+              type="date"
+              value={formData.hireDate}
+              onChange={(e) => setFormData({ ...formData, hireDate: e.target.value })}
+              required
+            />
+            <Input
+              label="Phone Number"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="+917249271897"
+            />
+          </div>
+
           <Input
             label="Corporate Email Address (Used for Login)"
             type="email"
@@ -745,13 +1256,6 @@ export default function EmployeeDirectoryPage() {
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             placeholder="atharvnarawade@gmail.com"
             required
-          />
-
-          <Input
-            label="Phone Number"
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            placeholder="+917249271897"
           />
 
           {/* Official Designation Dropdown */}
@@ -899,6 +1403,17 @@ export default function EmployeeDirectoryPage() {
                   </p>
                 </div>
 
+                {/* Automated Welcome Email Notice */}
+                <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/25 text-blue-200 text-xs">
+                  <Mail className="h-4 w-4 shrink-0 text-blue-400 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-white block">Automated Email Dispatch:</span>
+                    <p className="text-[11px] text-slate-300">
+                      Upon saving, an official onboarding email with this Login ID ({formData.email ? <strong className="text-white font-mono">{formData.email}</strong> : "corporate email"}), assigned password, and direct portal link will be forwarded to the employee so they can sign in and complete their details.
+                    </p>
+                  </div>
+                </div>
+
                 <Select
                   label="Assigned System RBAC Role"
                   options={[
@@ -979,6 +1494,133 @@ export default function EmployeeDirectoryPage() {
         variant="danger"
         isLoading={deleteLoading}
       />
+
+      {/* Candidate Pre-Onboarding Link & Invites Dialog */}
+      <Dialog
+        isOpen={isShareModalOpen}
+        onClose={() => {
+          setIsShareModalOpen(false);
+          setInviteSuccess(null);
+          setInviteError(null);
+        }}
+        title="Candidate Pre-Onboarding Intake Link"
+        description="Forward this intake form link to prospective employees to collect their personal details, DOB, and Aadhaar card prior to account creation."
+        size="lg"
+      >
+        <div className="space-y-5 pt-2">
+          {/* Active Company Target Info */}
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[10px] uppercase font-semibold text-slate-400">Target Organization</span>
+              <div className="text-xs font-bold text-white">
+                {currentUser?.activeCompany?.name || "Naree Foundation Venture Studio"}
+              </div>
+            </div>
+            <Badge variant="info" size="sm" className="font-mono">
+              {(currentUser?.activeCompany?.code || "").toUpperCase() === "NAREE" ? "Code: NF" : "Code: NFVS"}
+            </Badge>
+          </div>
+
+          {/* Copy Link Section */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-200">
+              Public Pre-Onboarding Intake URL
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={`${(process.env.NEXT_PUBLIC_APP_URL || "https://nfventurestudio.netlify.app").replace(/\/+$/, "")}/onboard?org=${
+                  (currentUser?.activeCompany?.code || "").toUpperCase() === "NAREE" ? "NF" : "NFVS"
+                }`}
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-blue-300 select-all focus:outline-none"
+              />
+              <Button
+                variant={copiedLink ? "secondary" : "primary"}
+                size="sm"
+                onClick={() => {
+                  const appBase = (process.env.NEXT_PUBLIC_APP_URL || "https://nfventurestudio.netlify.app").replace(/\/+$/, "");
+                  const url = `${appBase}/onboard?org=${
+                    (currentUser?.activeCompany?.code || "").toUpperCase() === "NAREE" ? "NF" : "NFVS"
+                  }`;
+                  navigator.clipboard.writeText(url);
+                  setCopiedLink(true);
+                  setTimeout(() => setCopiedLink(false), 2500);
+                }}
+                className="gap-1.5 shrink-0"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
+              </Button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Share this link over WhatsApp, email, or messaging. The candidate can open it on mobile or desktop without needing a login account.
+            </p>
+          </div>
+
+          {/* Direct Email Forwarding Section */}
+          <div className="rounded-xl border border-blue-500/20 bg-blue-950/20 p-4 space-y-3.5">
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-blue-400" />
+              <h4 className="text-xs font-semibold text-white uppercase tracking-wider">
+                Direct Email Dispatch (Optional)
+              </h4>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Or dispatch an official branded invitation directly from the CRM to the candidate&apos;s personal inbox:
+            </p>
+
+            {inviteSuccess && (
+              <div className="p-3 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{inviteSuccess}</span>
+              </div>
+            )}
+
+            {inviteError && (
+              <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>{inviteError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSendInvite} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Candidate Email Address *"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="candidate@gmail.com"
+                  required
+                />
+                <Input
+                  label="Candidate Name (Optional)"
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="e.g. Atharv Narawade"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  isLoading={inviteLoading}
+                  disabled={!inviteEmail}
+                  className="gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Invitation Email</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

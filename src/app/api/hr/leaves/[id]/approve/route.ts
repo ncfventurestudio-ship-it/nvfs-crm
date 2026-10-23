@@ -9,15 +9,16 @@ export async function POST(
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) {
+    if (!user) {
       return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
+    const approverEmployeeId = user.employee?.id || user.id;
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const notes = body.notes || "Approved";
 
-    const updated = await LeaveService.approveLeaveRequest(id, user.employee.id, notes);
+    const updated = await LeaveService.approveLeaveRequest(id, approverEmployeeId, notes);
     return successResponse(updated);
   } catch (error: any) {
     console.error("[Leave Approve Error]:", error);

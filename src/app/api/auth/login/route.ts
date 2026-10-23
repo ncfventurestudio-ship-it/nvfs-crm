@@ -30,11 +30,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Explicitly set active company context cookie to guarantee immediate tenant isolation
+    const companyId = user.activeCompany?.id || user.employee?.organizationId;
+
     // Generate secure session token
     const token = createSessionToken({
       id: user.id,
       email: user.email,
       roleCode: user.roleCode,
+      activeCompanyId: companyId,
     });
 
     // Set HTTP-only session cookie
@@ -47,8 +51,6 @@ export async function POST(req: NextRequest) {
       path: "/",
     });
 
-    // Explicitly set active company context cookie to guarantee immediate tenant isolation
-    const companyId = user.activeCompany?.id || user.employee?.organizationId;
     if (companyId) {
       cookieStore.set("nfvs_active_company", companyId, {
         httpOnly: true,

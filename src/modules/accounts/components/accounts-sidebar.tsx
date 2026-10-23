@@ -53,16 +53,17 @@ export function AccountsSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    Sales: false,
-    Purchases: false,
-    Accounting: false,
+    Accountant: true,
+    "Filing & Compliance": false,
     Banking: false,
     Inventory: true,
+    Sales: false,
+    Purchases: false,
   });
 
   const { activeCompany, user: currentUser } = useAuth();
-  const companyName = activeCompany?.name || "Apex Technologies";
-  const companyCode = activeCompany?.code || "APEX";
+  const companyName = activeCompany?.name || "Naree Care Services / NFVS";
+  const companyCode = activeCompany?.code || "NFVS";
   const primaryColor = activeCompany?.primaryColor || "#2563eb";
   const companyLogo =
     activeCompany?.logo ||
@@ -84,22 +85,50 @@ export function AccountsSidebar() {
 
   const navGroups: NavGroup[] = [
     {
-      groupName: "FINANCE TEAM",
+      groupName: "ZOHO BOOKS COMPATIBLE",
       items: [
         {
-          title: "Accounts & Books",
+          title: "Books Dashboard",
           icon: Landmark,
           href: "/app/accounts",
         },
         {
-          title: "Finance Hub",
-          icon: IndianRupee,
-          href: "/app/finance",
+          title: "Banking",
+          icon: Landmark,
+          subItems: [
+            { title: "Bank Accounts", href: "/app/accounts/banking/accounts" },
+            { title: "Cash Accounts", href: "/app/accounts/banking/cash" },
+            { title: "Bank Transactions", href: "/app/accounts/banking/transactions" },
+            { title: "Bank Reconciliation", href: "/app/accounts/banking/reconciliation" },
+            { title: "Transfers", href: "/app/accounts/banking/transfers" },
+          ],
         },
         {
-          title: "Financial Tasks",
-          icon: CheckSquare,
-          href: "/app/tasks",
+          title: "Filing & Compliance",
+          icon: Percent,
+          subItems: [
+            { title: "GST Returns & Filing", href: "/app/accounts/tax/gst-reports" },
+            { title: "e-Way Bills", href: "/app/accounts/tax/gst-transactions" },
+            { title: "e-Invoicing", href: "/app/accounts/tax/summary" },
+            { title: "Tax Rates & Setup", href: "/app/accounts/tax/rates" },
+            { title: "GST Configuration", href: "/app/accounts/tax/gst-config" },
+          ],
+        },
+        {
+          title: "Accountant",
+          icon: BookOpenCheck,
+          subItems: [
+            { title: "Manual Journals", href: "/app/accounts/accounting/journals" },
+            { title: "Recurring Journals", href: "/app/accounts/accounting/journals" },
+            { title: "Bulk Update", href: "/app/accounts/accounting/general-ledger" },
+            { title: "Currency Adjustments", href: "/app/accounts/settings/currency" },
+            { title: "Chart of Accounts", href: "/app/accounts/accounting/chart-of-accounts" },
+            { title: "Budgets", href: "/app/accounts/reports/profit-loss" },
+            { title: "Transaction Locking", href: "/app/accounts/settings/preferences" },
+            { title: "Fixed Assets", href: "/app/accounts/accounting/general-ledger" },
+            { title: "General Ledger", href: "/app/accounts/accounting/general-ledger" },
+            { title: "Trial Balance", href: "/app/accounts/accounting/trial-balance" },
+          ],
         },
         {
           title: "Sales",
@@ -127,49 +156,6 @@ export function AccountsSidebar() {
           ],
         },
         {
-          title: "Expenses",
-          icon: Receipt,
-          subItems: [
-            { title: "Expenses", href: "/app/accounts/expenses" },
-            { title: "Expense Categories", href: "/app/accounts/expenses/categories" },
-            { title: "Employee Expenses", href: "/app/accounts/expenses/employee-expenses" },
-            { title: "Reimbursements", href: "/app/accounts/expenses/reimbursements" },
-          ],
-        },
-        {
-          title: "Banking",
-          icon: Landmark,
-          subItems: [
-            { title: "Bank Accounts", href: "/app/accounts/banking/accounts" },
-            { title: "Cash Accounts", href: "/app/accounts/banking/cash" },
-            { title: "Bank Transactions", href: "/app/accounts/banking/transactions" },
-            { title: "Bank Reconciliation", href: "/app/accounts/banking/reconciliation" },
-            { title: "Transfers", href: "/app/accounts/banking/transfers" },
-          ],
-        },
-        {
-          title: "Double-Entry Ledger",
-          icon: BookOpenCheck,
-          subItems: [
-            { title: "Chart of Accounts", href: "/app/accounts/accounting/chart-of-accounts" },
-            { title: "Journal Entries", href: "/app/accounts/accounting/journals" },
-            { title: "General Ledger", href: "/app/accounts/accounting/general-ledger" },
-            { title: "Trial Balance", href: "/app/accounts/accounting/trial-balance" },
-            { title: "Opening Balances", href: "/app/accounts/accounting/opening-balances" },
-          ],
-        },
-        {
-          title: "Tax / GST",
-          icon: Percent,
-          subItems: [
-            { title: "Tax Rates", href: "/app/accounts/tax/rates" },
-            { title: "GST Configuration", href: "/app/accounts/tax/gst-config" },
-            { title: "GST Transactions", href: "/app/accounts/tax/gst-transactions" },
-            { title: "GST Reports", href: "/app/accounts/tax/gst-reports" },
-            { title: "Tax Summary", href: "/app/accounts/tax/summary" },
-          ],
-        },
-        {
           title: "Inventory",
           icon: Package,
           subItems: [
@@ -178,11 +164,12 @@ export function AccountsSidebar() {
             { title: "Stock", href: "/app/accounts/inventory/stock" },
             { title: "Warehouses", href: "/app/accounts/inventory/warehouses" },
             { title: "Stock Adjustments", href: "/app/accounts/inventory/adjustments" },
+            { title: "+ New Adjustment", href: "/app/accounts/inventory/adjustments/new" },
             { title: "Inventory Valuation", href: "/app/accounts/inventory/valuation" },
           ],
         },
         {
-          title: "Financial Reports",
+          title: "Reports",
           icon: FileBarChart,
           subItems: [
             { title: "Profit & Loss", href: "/app/accounts/reports/profit-loss" },
@@ -192,15 +179,12 @@ export function AccountsSidebar() {
             { title: "Trial Balance", href: "/app/accounts/reports/trial-balance" },
             { title: "Accounts Receivable", href: "/app/accounts/reports/receivables" },
             { title: "Accounts Payable", href: "/app/accounts/reports/payables" },
-            { title: "Sales Report", href: "/app/accounts/reports/sales" },
-            { title: "Purchase Report", href: "/app/accounts/reports/purchases" },
-            { title: "Expense Report", href: "/app/accounts/reports/expenses" },
             { title: "Tax / GST Reports", href: "/app/accounts/reports/tax" },
             { title: "Inventory Reports", href: "/app/accounts/reports/inventory" },
           ],
         },
         {
-          title: "Accounts Settings",
+          title: "Settings",
           icon: Settings,
           subItems: [
             { title: "Organization", href: "/app/accounts/settings/organization" },
@@ -208,17 +192,18 @@ export function AccountsSidebar() {
             { title: "Currency", href: "/app/accounts/settings/currency" },
             { title: "Taxes", href: "/app/accounts/settings/taxes" },
             { title: "Invoice Settings", href: "/app/accounts/settings/invoices" },
-            { title: "Numbering", href: "/app/accounts/settings/numbering" },
-            { title: "Payment Terms", href: "/app/accounts/settings/payment-terms" },
-            { title: "Payment Methods", href: "/app/accounts/settings/payment-methods" },
             { title: "Bank Accounts", href: "/app/accounts/settings/bank-accounts" },
-            { title: "Templates", href: "/app/accounts/settings/templates" },
-            { title: "Preferences", href: "/app/accounts/settings/preferences" },
-            { title: "Automation", href: "/app/accounts/settings/automation" },
-            { title: "User Permissions", href: "/app/accounts/settings/permissions" },
             { title: "Audit Logs", href: "/app/accounts/settings/audit-logs" },
           ],
         },
+      ],
+    },
+    {
+      groupName: "APPS & EXTENSIONS",
+      items: [
+        { title: "Zoho / NFVS Payroll", href: "/app/payroll", icon: FileCheck },
+        { title: "Payment Receipts", href: "/app/accounts/sales/payments-received", icon: Landmark },
+        { title: "Documents Vault", href: "/app/documents", icon: FileText },
       ],
     },
     {

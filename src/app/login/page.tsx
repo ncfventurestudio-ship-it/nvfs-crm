@@ -10,6 +10,11 @@ import {
   Eye,
   EyeOff,
   X,
+  CheckCircle2,
+  AlertCircle,
+  UserCheck,
+  Send,
+  KeyRound,
 } from "lucide-react";
 import { loginSchema } from "@/validations/auth.schema";
 
@@ -24,6 +29,52 @@ export default function LoginPage() {
 
   // Forgot Password Modal State
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotId, setForgotId] = useState("");
+  const [forgotNote, setForgotNote] = useState("");
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotSuccessData, setForgotSuccessData] = useState<{
+    requestNumber: string;
+    employeeName: string;
+    employeeNumber: string;
+    employeeEmail?: string | null;
+    companyName?: string;
+    designatedHrEmail?: string;
+    message: string;
+  } | null>(null);
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotId.trim()) {
+      setForgotError("Please enter your Employee ID or corporate email address.");
+      return;
+    }
+
+    setForgotSubmitting(true);
+    setForgotError(null);
+
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: forgotId.trim(),
+          note: forgotNote.trim() || undefined,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || json.message || "Failed to submit password recovery request.");
+      }
+
+      setForgotSuccessData(json.data);
+    } catch (err: any) {
+      setForgotError(err.message || "Failed to communicate with authentication server.");
+    } finally {
+      setForgotSubmitting(false);
+    }
+  };
 
   // Standard Email/Password Submit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -251,7 +302,13 @@ export default function LoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setIsForgotPasswordOpen(true)}
+                    onClick={() => {
+                      setForgotId(email);
+                      setForgotNote("");
+                      setForgotError(null);
+                      setForgotSuccessData(null);
+                      setIsForgotPasswordOpen(true);
+                    }}
                     className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
                   >
                     Forgot password?
@@ -340,45 +397,189 @@ export default function LoginPage() {
 
 
       {/* ========================================================= */}
-      {/* FORGOT PASSWORD MODAL                                     */}
+      {/* FORGOT PASSWORD MODAL: SUBMIT ID TO HR                   */}
       {/* ========================================================= */}
       {isForgotPasswordOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
           <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#1e3258] bg-[#0c1322] p-6 shadow-2xl space-y-4 text-slate-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-blue-400">
-                <Lock className="h-5 w-5" />
-                <h3 className="text-base font-bold text-white">Password Recovery</h3>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#16233d] pb-3">
+              <div className="flex items-center gap-2.5 text-blue-400">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30">
+                  <KeyRound className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Password Recovery Request</h3>
+                  <p className="text-[11px] text-slate-400">Official HR Credentials Verification</p>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={() => setIsForgotPasswordOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                onClick={() => {
+                  setIsForgotPasswordOpen(false);
+                  setForgotSuccessData(null);
+                  setForgotError(null);
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              This is a private corporate enterprise CRM back-office. Password resets must be
-              requested through your system administrator or authorized HR officer.
-            </p>
+            {forgotSuccessData ? (
+              /* Success Confirmation View */
+              <div className="space-y-4 py-2 animate-in fade-in">
+                <div className="flex flex-col items-center text-center space-y-2">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 ring-4 ring-emerald-500/10">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-base font-bold text-white">Request Forwarded to HR</h4>
+                  <p className="text-xs text-slate-300 leading-relaxed max-w-xs">
+                    Your password reset request has been routed to Human Resources via CRM notification and email.
+                  </p>
+                </div>
 
-            <div className="rounded-xl border border-[#1e3258] bg-[#121c33] p-3 text-xs space-y-1 font-mono">
-              <div className="text-slate-400">Primary Administrator:</div>
-              <div className="text-blue-300">superadmin@nfvs.in</div>
-              <div className="text-[11px] text-slate-500 pt-1">Universal Password: Admin@123</div>
-            </div>
+                <div className="rounded-xl border border-[#1e3258] bg-[#121c33] p-3.5 space-y-2 text-xs font-mono">
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Reference ID:</span>
+                    <span className="text-[#d4af37] font-semibold">{forgotSuccessData.requestNumber}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span>Employee:</span>
+                    <span className="text-slate-200">{forgotSuccessData.employeeName}</span>
+                  </div>
+                  {forgotSuccessData.companyName && (
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span>Designated Company:</span>
+                      <span className="text-emerald-300 font-semibold">{forgotSuccessData.companyName}</span>
+                    </div>
+                  )}
+                  {forgotSuccessData.designatedHrEmail && (
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span>Routed to HR:</span>
+                      <span className="text-blue-300 font-semibold">{forgotSuccessData.designatedHrEmail}</span>
+                    </div>
+                  )}
+                  {forgotSuccessData.employeeEmail && (
+                    <div className="flex justify-between items-center text-slate-400">
+                      <span>Dispatch Target:</span>
+                      <span className="text-blue-300">{forgotSuccessData.employeeEmail}</span>
+                    </div>
+                  )}
+                  <div className="pt-2 border-t border-slate-700/60 text-[11px] text-emerald-300 flex items-center gap-1.5 not-mono">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Designated company HR will review, update credentials, and email your new password.</span>
+                  </div>
+                </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setIsForgotPasswordOpen(false)}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
-              >
-                Understood
-              </button>
-            </div>
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPasswordOpen(false);
+                      setForgotSuccessData(null);
+                      setForgotError(null);
+                    }}
+                    className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2.5 text-xs font-semibold text-white hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-600/30 transition-all"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Request Form View */
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Enter your registered Employee ID or corporate email address. The CRM will automatically verify your workforce identity and route your password recovery to your organization&apos;s Human Resources department.
+                </p>
+
+                {/* ID Input */}
+                <div className="space-y-1.5">
+                  <label htmlFor="forgot-id" className="block text-xs font-medium text-slate-300">
+                    Employee ID or Registered Corporate Email <span className="text-rose-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <UserCheck className="h-4 w-4" />
+                    </div>
+                    <input
+                      id="forgot-id"
+                      type="text"
+                      value={forgotId}
+                      onChange={(e) => setForgotId(e.target.value)}
+                      placeholder="e.g. NFVS-ENG-042, NF-FIELD-108, or your corporate email"
+                      className="flex h-10 w-full rounded-xl border border-[#1e3258] bg-[#070b16] pl-9 pr-3 text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Must match an active employee profile in the CRM database or corporate directory.
+                  </p>
+                </div>
+
+                {/* Note / Reason Input */}
+                <div className="space-y-1.5">
+                  <label htmlFor="forgot-note" className="block text-xs font-medium text-slate-300">
+                    Reason / Additional Note <span className="text-slate-500">(Optional)</span>
+                  </label>
+                  <input
+                    id="forgot-note"
+                    type="text"
+                    value={forgotNote}
+                    onChange={(e) => setForgotNote(e.target.value)}
+                    placeholder="e.g. Forgot password, device change, account locked"
+                    className="flex h-9 w-full rounded-xl border border-[#1e3258] bg-[#070b16] px-3 text-xs text-white placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Warning / Error Banner */}
+                {forgotError && (
+                  <div className="rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-transparent p-3 text-xs text-amber-200 flex items-start gap-2.5 animate-in fade-in">
+                    <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <div className="font-semibold text-amber-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>Workforce Verification Warning</span>
+                      </div>
+                      <p className="text-[11.5px] text-slate-200 leading-relaxed">{forgotError}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#16233d]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPasswordOpen(false);
+                      setForgotError(null);
+                    }}
+                    disabled={forgotSubmitting}
+                    className="rounded-xl px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={forgotSubmitting}
+                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:from-blue-500 hover:to-indigo-500 shadow-md shadow-blue-600/30 transition-all disabled:opacity-60"
+                  >
+                    {forgotSubmitting ? (
+                      <>
+                        <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                        <span>Notifying HR...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-3.5 w-3.5" />
+                        <span>Submit Request to HR</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

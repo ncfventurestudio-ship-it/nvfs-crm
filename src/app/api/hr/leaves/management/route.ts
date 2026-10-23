@@ -12,7 +12,7 @@ function isAuthorized(user: any): boolean {
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) {
+    if (!user) {
       return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       return errorResponse("Forbidden: Executive or HR privileges required", "FORBIDDEN", 403);
     }
 
-    const orgId = user.activeCompany?.id || user.employee.organizationId;
+    const orgId = user.activeCompany?.id || user.employee?.organizationId || "org_nfvs_studio";
     const data = await LeaveService.getOrganizationManagementData(orgId);
 
     return successResponse(data);
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) {
+    if (!user) {
       return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest) {
       return errorResponse("Forbidden: Executive or HR privileges required", "FORBIDDEN", 403);
     }
 
-    const orgId = user.activeCompany?.id || user.employee.organizationId;
+    const orgId = user.activeCompany?.id || user.employee?.organizationId || "org_nfvs_studio";
     const body = await req.json();
     const { action } = body;
 

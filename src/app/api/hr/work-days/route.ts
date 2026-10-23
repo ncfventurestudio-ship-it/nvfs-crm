@@ -24,28 +24,57 @@ const updateWorkDaySchema = z.object({
   ),
 });
 
+import { LeaveStore } from "@/lib/leave-store";
+
+function withDbTimeout<T>(promise: Promise<T>, ms = 350): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Database operation timed out")), ms)
+    ),
+  ]);
+}
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
+    if (!user) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
 
     const { searchParams } = new URL(req.url);
     const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString(), 10);
-    const orgId = user.employee.organizationId;
+    const orgId = user.employee?.organizationId || user.activeCompany?.id || "org_nfvs_studio";
 
-    const [workDays, holidays] = await Promise.all([
-      db.workDayConfig.findMany({
-        where: { organizationId: orgId },
-        orderBy: { dayOfWeek: "asc" },
-      }),
-      db.holiday.findMany({
-        where: {
-          organizationId: orgId,
-          year,
-        },
-        orderBy: { date: "asc" },
-      }),
-    ]);
+    let workDays: any[] = [];
+    let holidays: any[] = [];
+
+    try {
+      [workDays, holidays] = await withDbTimeout(
+        Promise.all([
+          db.workDayConfig.findMany({
+            where: { organizationId: orgId },
+            orderBy: { dayOfWeek: "asc" },
+          }),
+          db.holiday.findMany({
+            where: {
+              organizationId: orgId,
+              year,
+            },
+            orderBy: { date: "asc" },
+          }),
+        ]),
+        350
+      );
+    } catch {
+      workDays = LeaveStore.getWorkDays(orgId);
+      holidays = LeaveStore.getHolidays(orgId, year);
+    }
+
+    if (!workDays || workDays.length === 0) {
+      workDays = LeaveStore.getWorkDays(orgId);
+    }
+    if (!holidays || holidays.length === 0) {
+      holidays = LeaveStore.getHolidays(orgId, year);
+    }
 
     return successResponse({ workDays, holidays, year });
   } catch (error: any) {
@@ -57,15 +86,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
+    if (!user) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
 
     const userRole = user.roleCode;
-    const isPrivileged = ["SUPER_ADMIN", "ADMIN", "CHAIRPERSON", "CEO", "DEPARTMENT_HEAD"].includes(userRole || "");
+    const isPrivileged = ["SUPER_ADMIN", "ADMIN", "CHAIRPERSON", "CEO", "DEPARTMENT_HEAD", "HR"].includes(userRole || "");
     if (!isPrivileged) {
       return errorResponse("Forbidden: HR or Admin privileges required", "FORBIDDEN", 403);
     }
 
-    const orgId = user.employee.organizationId;
+    const orgId = user.employee?.organizationId || user.activeCompany?.id || "org_nfvs_studio";
     const body = await req.json();
     const action = body.action || "CREATE_HOLIDAY";
 

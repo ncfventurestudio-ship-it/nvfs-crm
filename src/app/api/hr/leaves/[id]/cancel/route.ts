@@ -9,12 +9,13 @@ export async function POST(
 ) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) {
+    if (!user) {
       return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
     }
 
+    const employeeId = user.employee?.id || user.id;
     const { id } = await params;
-    const cancelledRequest = await LeaveService.cancelLeaveRequest(id, user.employee.id);
+    const cancelledRequest = await LeaveService.cancelLeaveRequest(id, employeeId);
 
     return successResponse(cancelledRequest);
   } catch (error: any) {

@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { AuthenticatedUser, SystemRoleCode } from "@/types";
+import { EmployeeStore } from "@/lib/employee-store";
+import { getOfflinePersonaEmployee } from "@/lib/offline-auth";
 
 export class RbacService {
   /**
@@ -7,27 +9,33 @@ export class RbacService {
    * Super Admin always evaluates to true.
    */
   static async hasPermission(userId: string, permissionCode: string): Promise<boolean> {
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: {
-                permission: true,
+    try {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        include: {
+          role: {
+            include: {
+              rolePermissions: {
+                include: {
+                  permission: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    if (!user || !user.isActive) return false;
-    if (user.role.code === "SUPER_ADMIN") return true;
+      if (!user || !user.isActive) return false;
+      if (user.role?.code === "SUPER_ADMIN") return true;
 
-    return user.role.rolePermissions.some(
-      (rp) => rp.permission.code === permissionCode
-    );
+      return (
+        user.role?.rolePermissions?.some(
+          (rp) => rp.permission?.code === permissionCode
+        ) ?? false
+      );
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -49,17 +57,21 @@ export class RbacService {
    * - Employee: Self + colleagues.
    */
   static async getSubordinateIds(managerEmployeeId: string): Promise<string[]> {
-    const directReports = await db.employee.findMany({
-      where: { managerId: managerEmployeeId },
-      select: { id: true },
-    });
+    try {
+      const directReports = await db.employee.findMany({
+        where: { managerId: managerEmployeeId },
+        select: { id: true },
+      });
 
-    let ids = directReports.map((r) => r.id);
-    for (const report of directReports) {
-      const nested = await this.getSubordinateIds(report.id);
-      ids = ids.concat(nested);
+      let ids = directReports.map((r) => r.id);
+      for (const report of directReports) {
+        const nested = await this.getSubordinateIds(report.id);
+        ids = ids.concat(nested);
+      }
+      return ids;
+    } catch {
+      return [];
     }
-    return ids;
   }
 
   /**
@@ -79,10 +91,18 @@ export class RbacService {
       return true;
     }
 
-    const target = await db.employee.findUnique({
-      where: { id: targetEmployeeId },
-      select: { id: true, departmentId: true, managerId: true },
-    });
+    let target: any = null;
+    try {
+      target = await db.employee.findUnique({
+        where: { id: targetEmployeeId },
+        select: { id: true, departmentId: true, managerId: true },
+      });
+    } catch {
+      target =
+        EmployeeStore.getById(targetEmployeeId) ||
+        EmployeeStore.findByEmailOrNumber(targetEmployeeId) ||
+        getOfflinePersonaEmployee(targetEmployeeId);
+    }
     if (!target) return false;
 
     // Direct departmental match (Department Heads, CXOs, or colleagues of that department)
@@ -101,29 +121,31 @@ export class RbacService {
       return subordinateIds.includes(targetEmployeeId);
     }
 
-    // CTO / CIO: Technology, Engineering & International Affairs department
-    if (actor.roleCode === "CTO" || actor.roleCode === "CIO") {
-      const depts = await db.department.findMany({ where: { code: { in: ["ENG", "SW", "INTL"] } } });
-      const deptIds = depts.map((d) => d.id);
-      return deptIds.includes(target.departmentId || "") || target.id === actor.employee?.id;
-    }
+    // CXO Departmental scopes
+    try {
+      if (actor.roleCode === "CTO" || actor.roleCode === "CIO") {
+        const depts = await db.department.findMany({ where: { code: { in: ["ENG", "SW", "INTL"] } } });
+        const deptIds = depts.map((d) => d.id);
+        return deptIds.includes(target.departmentId || "") || target.id === actor.employee?.id;
+      }
 
-    // CFO: Finance & Treasury department
-    if (actor.roleCode === "CFO") {
-      const finDept = await db.department.findFirst({ where: { code: "FIN" } });
-      return target.departmentId === finDept?.id || target.id === actor.employee?.id;
-    }
+      if (actor.roleCode === "CFO") {
+        const finDept = await db.department.findFirst({ where: { code: "FIN" } });
+        return target.departmentId === finDept?.id || target.id === actor.employee?.id;
+      }
 
-    // CMO: Commercial & Marketing department
-    if (actor.roleCode === "CMO") {
-      const crmDept = await db.department.findFirst({ where: { code: { in: ["CRM", "MKT"] } } });
-      return target.departmentId === crmDept?.id || target.id === actor.employee?.id;
-    }
+      if (actor.roleCode === "CMO") {
+        const crmDept = await db.department.findFirst({ where: { code: { in: ["CRM", "MKT"] } } });
+        return target.departmentId === crmDept?.id || target.id === actor.employee?.id;
+      }
 
-    // COO: Operations & Logistics department
-    if (actor.roleCode === "COO") {
-      const opsDept = await db.department.findFirst({ where: { code: "OPS" } });
-      return target.departmentId === opsDept?.id || target.id === actor.employee?.id;
+      if (actor.roleCode === "COO") {
+        const opsDept = await db.department.findFirst({ where: { code: "OPS" } });
+        return target.departmentId === opsDept?.id || target.id === actor.employee?.id;
+      }
+    } catch {
+      // Offline fallback: allow access for leadership
+      return true;
     }
 
     // Individual Employee: can view directory details

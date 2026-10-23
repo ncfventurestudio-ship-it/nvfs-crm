@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ import {
   X,
   AlertTriangle,
   Key,
+  Mail,
+  Send,
 } from "lucide-react";
 import { formatDate, cn } from "@/lib/utils";
 
@@ -199,6 +201,44 @@ export function EmployeeProfileDossier({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [showWelcomeMailBanner, setShowWelcomeMailBanner] = useState(
+    searchParams?.get("newlyCreated") === "true"
+  );
+
+  // Forward / Resend Credentials Modal State
+  const [resendModalOpen, setResendModalOpen] = useState(false);
+  const [resendPassword, setResendPassword] = useState("");
+  const [resendingMail, setResendingMail] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+
+  const handleResendCredentials = async () => {
+    try {
+      setResendingMail(true);
+      setResendError(null);
+      setResendSuccess(null);
+      const res = await fetch(`/api/employees/${employee.id}/resend-credentials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customPassword: resendPassword || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to forward credentials");
+      }
+      setResendSuccess(json.data?.message || "Credentials email forwarded successfully!");
+      setTimeout(() => {
+        setResendModalOpen(false);
+        setResendSuccess(null);
+        setResendPassword("");
+      }, 2500);
+    } catch (err: any) {
+      setResendError(err.message || "Failed to forward email");
+    } finally {
+      setResendingMail(false);
+    }
+  };
 
   const handleDeleteEmployee = async () => {
     try {
@@ -662,6 +702,29 @@ export function EmployeeProfileDossier({
           </div>
         </div>
       </div>
+
+      {/* Newly Created Welcome Email Banner */}
+      {showWelcomeMailBanner && (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-4 text-xs text-emerald-200 flex items-start justify-between gap-3 shadow-lg animate-in fade-in">
+          <div className="flex items-start gap-3">
+            <Mail className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <div className="font-semibold text-emerald-300 text-sm">
+                Employee Profile Created &amp; Welcome Credentials Dispatched!
+              </div>
+              <p className="text-emerald-300/80">
+                An official welcome email with portal credentials (Login ID: <strong className="text-white font-mono">{employee.email}</strong>) and direct login link has been forwarded to the employee. They will use their assigned ID and password to log in and fill out the rest of their profile details.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowWelcomeMailBanner(false)}
+            className="text-emerald-400 hover:text-emerald-200 text-xs px-2 py-1 rounded cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Error alert if any */}
       {errorMessage && (
@@ -1970,6 +2033,20 @@ export function EmployeeProfileDossier({
                           {employee.user?.isActive ? "Active (Can log in)" : "Pending Activation (Activates on HR Approval)"}
                         </strong>
                       </p>
+                      {employee.user && isHrOrAdmin && (
+                        <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-slate-400">Onboarding Access:</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setResendModalOpen(true)}
+                            className="text-xs border-blue-500/30 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 hover:text-white gap-1.5"
+                          >
+                            <Mail className="h-3.5 w-3.5 text-blue-400" />
+                            <span>Forward Credentials Email</span>
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
@@ -2187,6 +2264,82 @@ export function EmployeeProfileDossier({
                 </Button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Resend Credentials Email Modal */}
+      {resendModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-xl border border-slate-800 bg-[#0f172a] p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-slate-800 pb-3">
+              <Mail className="h-5 w-5 text-blue-400" />
+              <div>
+                <h3 className="text-sm font-semibold text-white">Forward Login Credentials Email</h3>
+                <p className="text-xs text-slate-400">Send or reset login details to {employee.email}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-xs text-slate-300">
+                This will dispatch an official welcome email containing the employee&apos;s Login ID, password, and portal sign-in URL so they can access the CRM.
+              </p>
+
+              <div>
+                <label className="text-xs font-medium text-slate-300 block mb-1">
+                  Assign New Password (optional)
+                </label>
+                <input
+                  type="password"
+                  value={resendPassword}
+                  onChange={(e) => setResendPassword(e.target.value)}
+                  placeholder="Leave empty to use Enterprise@2026"
+                  className="w-full rounded-md border border-slate-800 bg-slate-900 p-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  If set, updates the employee&apos;s password and emails the new credentials.
+                </p>
+              </div>
+
+              {resendError && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-300 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+                  <span>{resendError}</span>
+                </div>
+              )}
+
+              {resendSuccess && (
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span>{resendSuccess}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setResendModalOpen(false);
+                  setResendError(null);
+                  setResendSuccess(null);
+                }}
+                disabled={resendingMail}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleResendCredentials}
+                disabled={resendingMail}
+                className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-4 gap-1.5 shadow-md shadow-blue-900/30"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>{resendingMail ? "Dispatching..." : "Send Credentials Email"}</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}

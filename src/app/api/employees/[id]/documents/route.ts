@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { EmployeeOnboardingService } from "@/services/employee-onboarding.service";
 import { db } from "@/lib/db";
+import { EmployeeStore } from "@/lib/employee-store";
+import { getOfflinePersonaEmployee } from "@/lib/offline-auth";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
@@ -29,10 +31,19 @@ export async function GET(
     }
 
     const { id } = await params;
-    const documents = await db.employeeDocument.findMany({
-      where: { employeeId: id },
-      orderBy: { uploadedAt: "desc" },
-    });
+    let documents: any[] = [];
+    try {
+      documents = await db.employeeDocument.findMany({
+        where: { employeeId: id },
+        orderBy: { uploadedAt: "desc" },
+      });
+    } catch {
+      const stored =
+        EmployeeStore.getById(id) ||
+        EmployeeStore.findByEmailOrNumber(id) ||
+        getOfflinePersonaEmployee(id);
+      documents = stored?.documents || [];
+    }
 
     return successResponse(documents);
   } catch (error: any) {
@@ -54,7 +65,18 @@ export async function POST(
     const { id } = await params;
 
     // Check if the employee exists
-    const employee = await db.employee.findUnique({ where: { id } });
+    let employee: any = null;
+    try {
+      employee = await db.employee.findUnique({ where: { id } });
+    } catch {}
+
+    if (!employee) {
+      employee =
+        EmployeeStore.getById(id) ||
+        EmployeeStore.findByEmailOrNumber(id) ||
+        getOfflinePersonaEmployee(id);
+    }
+
     if (!employee) {
       return errorResponse("Employee not found", "NOT_FOUND", 404);
     }

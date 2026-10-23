@@ -18,6 +18,7 @@ import {
   UserCheck,
   Building,
   FileText,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -147,6 +148,10 @@ export function NotificationBell() {
       case "MEETING_UPCOMING":
       case "MEETING_REMINDER":
         return <Clock className="h-3.5 w-3.5 text-blue-400" />;
+      case "PASSWORD_RESET_REQUEST":
+        return <KeyRound className="h-3.5 w-3.5 text-amber-400" />;
+      case "PASSWORD_RESET_COMPLETED":
+        return <KeyRound className="h-3.5 w-3.5 text-emerald-400" />;
       default:
         return <Sparkles className="h-3.5 w-3.5 text-blue-400" />;
     }

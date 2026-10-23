@@ -48,78 +48,90 @@ export default async function AppHrDashboardPage() {
   const primaryColor = user.activeCompany?.primaryColor || "#2563eb";
 
   // Fetch company-scoped HR records and jobs in parallel
-  const [
-    employees,
-    departments,
-    leaveRequests,
-    attendanceRecords,
-    policies,
-    allCompanyEmployeesRaw,
-    initialJobsRaw,
-  ] = await Promise.all([
-    db.employee.findMany({
-      where: { organizationId: companyId },
-      orderBy: { hireDate: "desc" },
-      take: 8,
-      include: { department: true, team: true },
-    }),
-    db.department.findMany({
-      where: { organizationId: companyId },
-      include: { _count: { select: { employees: true } } },
-    }),
-    db.leaveRequest.findMany({
-      where: { employee: { organizationId: companyId }, status: "PENDING" },
-      take: 5,
-      include: { employee: true, leavePolicy: true },
-    }),
-    db.attendanceRecord.findMany({
-      where: { employee: { organizationId: companyId } },
-      take: 10,
-      orderBy: { date: "desc" },
-    }),
-    db.hrPolicy.findMany({
-      where: { organizationId: companyId },
-      take: 4,
-    }),
-    db.employee.findMany({
-      where: { organizationId: companyId, employmentStatus: "ACTIVE" },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        designation: true,
-        email: true,
-        employeeNumber: true,
-        employmentStatus: true,
-        department: { select: { name: true, code: true } },
-        user: {
-          select: {
-            email: true,
-            role: { select: { code: true, level: true } },
+  let employees: any[] = [];
+  let departments: any[] = [];
+  let leaveRequests: any[] = [];
+  let attendanceRecords: any[] = [];
+  let policies: any[] = [];
+  let allCompanyEmployeesRaw: any[] = [];
+  let initialJobsRaw: any[] = [];
+
+  try {
+    [
+      employees,
+      departments,
+      leaveRequests,
+      attendanceRecords,
+      policies,
+      allCompanyEmployeesRaw,
+      initialJobsRaw,
+    ] = await Promise.all([
+      db.employee.findMany({
+        where: { organizationId: companyId },
+        orderBy: { hireDate: "desc" },
+        take: 8,
+        include: { department: true, team: true },
+      }),
+      db.department.findMany({
+        where: { organizationId: companyId },
+        include: { _count: { select: { employees: true } } },
+      }),
+      db.leaveRequest.findMany({
+        where: { employee: { organizationId: companyId }, status: "PENDING" },
+        take: 5,
+        include: { employee: true, leavePolicy: true },
+      }),
+      db.attendanceRecord.findMany({
+        where: { employee: { organizationId: companyId } },
+        take: 10,
+        orderBy: { date: "desc" },
+      }),
+      db.hrPolicy.findMany({
+        where: { organizationId: companyId },
+        take: 4,
+      }),
+      db.employee.findMany({
+        where: { organizationId: companyId, employmentStatus: "ACTIVE" },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          designation: true,
+          email: true,
+          employeeNumber: true,
+          employmentStatus: true,
+          department: { select: { name: true, code: true } },
+          user: {
+            select: {
+              email: true,
+              role: { select: { code: true, level: true } },
+            },
+          },
+          assignedTasks: {
+            where: { status: { in: ["TODO", "IN_PROGRESS"] } },
+            select: { id: true },
+          },
+          operationAssignments: {
+            where: {
+              operation: { status: { in: ["ACTIVE", "SCHEDULED", "IN_PROGRESS"] } },
+            },
+            select: {
+              id: true,
+              operation: { select: { id: true, status: true } },
+            },
+          },
+          onDutyAssignments: {
+            where: { status: { in: ["ASSIGNED", "IN_PROGRESS"] } },
+            select: { id: true },
           },
         },
-        assignedTasks: {
-          where: { status: { in: ["TODO", "IN_PROGRESS"] } },
-          select: { id: true },
-        },
-        operationAssignments: {
-          where: {
-            operation: { status: { in: ["ACTIVE", "SCHEDULED", "IN_PROGRESS"] } },
-          },
-          select: {
-            id: true,
-            operation: { select: { id: true, status: true } },
-          },
-        },
-        onDutyAssignments: {
-          where: { status: { in: ["ASSIGNED", "IN_PROGRESS"] } },
-          select: { id: true },
-        },
-      },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
-    }),
-    HrJobService.listAssignedJobs(user).catch(() => []),
-  ]);
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+      HrJobService.listAssignedJobs(user).catch(() => []),
+    ]);
+  } catch (err: any) {
+    console.warn("[HR Dashboard] Database query failed (cloud database paused):", err.message);
+  }
 
   // Strictly filter to regular staff employees only — NO EXECUTIVES OR LEADERSHIP
   const companyEmployeeOptions = allCompanyEmployeesRaw
@@ -151,10 +163,18 @@ export default async function AppHrDashboardPage() {
     };
   });
 
-  const totalEmployees = await db.employee.count({ where: { organizationId: companyId } });
-  const activeEmployees = await db.employee.count({
-    where: { organizationId: companyId, employmentStatus: "ACTIVE" },
-  });
+  let totalEmployees = 0;
+  let activeEmployees = 0;
+  try {
+    if (companyId) {
+      totalEmployees = await db.employee.count({ where: { organizationId: companyId } });
+      activeEmployees = await db.employee.count({
+        where: { organizationId: companyId, employmentStatus: "ACTIVE" },
+      });
+    }
+  } catch (err: any) {
+    console.warn("[HR Dashboard] Count query failed (cloud database paused):", err.message);
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

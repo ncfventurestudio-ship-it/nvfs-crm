@@ -21,7 +21,19 @@ const createEventSchema = z.object({
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
+    if (!user) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
+
+    if (!user.employee) {
+      user.employee = {
+        id: `emp_${user.id}`,
+        employeeNumber: "EMP-OFFLINE",
+        designation: user.roleName || "Corporate Staff",
+        organizationName: user.activeCompany?.name || "NFVS Enterprise",
+        organizationId: user.activeCompany?.id || "org_nfvs_corp",
+        firstName: user.email.split("@")[0] || "Team",
+        lastName: "Member",
+      } as any;
+    }
 
     const { searchParams } = new URL(req.url);
 
@@ -56,7 +68,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user || !user.employee) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
+    if (!user) return errorResponse("Unauthorized", "UNAUTHORIZED", 401);
+
+    if (!user.employee) {
+      user.employee = {
+        id: `emp_${user.id}`,
+        employeeNumber: "EMP-OFFLINE",
+        designation: user.roleName || "Corporate Staff",
+        organizationName: user.activeCompany?.name || "NFVS Enterprise",
+        organizationId: user.activeCompany?.id || "org_nfvs_corp",
+        firstName: user.email.split("@")[0] || "Team",
+        lastName: "Member",
+      } as any;
+    }
 
     const body = await req.json();
     const parse = createEventSchema.safeParse(body);

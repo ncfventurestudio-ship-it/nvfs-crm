@@ -27,6 +27,7 @@ import {
   Users,
   CheckSquare,
   Sparkles,
+  BookOpenCheck,
 } from "lucide-react";
 import { AccountsDashboardData } from "@/services/accounts.service";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,12 @@ export function AccountsDashboardView({
               <RefreshCw className="h-3.5 w-3.5" />
               <span>Sync</span>
             </button>
+            <Link href="/app/accounts/inventory/adjustments/new">
+              <button className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 transition-colors">
+                <Plus className="h-4 w-4" />
+                <span>New Adjustment</span>
+              </button>
+            </Link>
             <button
               onClick={() => onOpenQuickCreate("INVOICE")}
               className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/20 transition-colors"
@@ -108,6 +115,60 @@ export function AccountsDashboardView({
           </div>
         }
       />
+
+      {/* ZOHO BOOKS INTEGRATED OPERATIONS BAR */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0c1220] p-4 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+              ZB
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Zoho Books Operations Hub
+                </h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800">
+                  Live Synced
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Direct access to Stock Adjustments (Quantity & Value), Manual Journals, Fixed Assets, and GST Filing
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/app/accounts/inventory/adjustments/new">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-colors">
+                <Plus className="h-3.5 w-3.5" />
+                <span>New Adjustment</span>
+              </button>
+            </Link>
+
+            <Link href="/app/accounts/accounting/journals">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors">
+                <BookOpenCheck className="h-3.5 w-3.5 text-blue-500" />
+                <span>Manual Journal</span>
+              </button>
+            </Link>
+
+            <Link href="/app/accounts/tax/gst-reports">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors">
+                <Receipt className="h-3.5 w-3.5 text-amber-500" />
+                <span>GST Filing</span>
+              </button>
+            </Link>
+
+            <Link href="/app/accounts/banking/reconciliation">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors">
+                <Landmark className="h-3.5 w-3.5 text-purple-500" />
+                <span>Bank Reconciliation</span>
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {/* CONSOLIDATED MODE BANNER — shown when viewing All Companies */}
       {data.isConsolidated && data.companyBreakdown && data.companyBreakdown.length > 0 && (

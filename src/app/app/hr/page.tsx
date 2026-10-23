@@ -34,52 +34,64 @@ export default async function HRModulePage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [
-    totalEmployees,
-    todayAttendance,
-    pendingLeaves,
-    upcomingHolidays,
-    recentPolicies,
-    complianceIssues,
-    myLeaveBalances,
-  ] = await Promise.all([
-    orgId ? db.employee.count({ where: { organizationId: orgId, employmentStatus: "ACTIVE" } }) : 0,
-    orgId
-      ? db.attendanceRecord.findMany({
-          where: { date: today, employee: { organizationId: orgId } },
-        })
-      : [],
-    orgId
-      ? db.leaveRequest.count({
-          where: { status: "PENDING", employee: { organizationId: orgId } },
-        })
-      : 0,
-    orgId
-      ? db.holiday.findMany({
-          where: { organizationId: orgId, date: { gte: today } },
-          orderBy: { date: "asc" },
-          take: 4,
-        })
-      : [],
-    orgId
-      ? db.hrPolicy.findMany({
-          where: { organizationId: orgId },
-          orderBy: { updatedAt: "desc" },
-          take: 3,
-        })
-      : [],
-    orgId
-      ? db.complianceRecord.count({
-          where: { organizationId: orgId, status: { in: ["OVERDUE", "PENDING"] } },
-        })
-      : 0,
-    user?.employee
-      ? db.leaveBalance.findMany({
-          where: { employeeId: user.employee.id, year: today.getFullYear() },
-          include: { leavePolicy: true },
-        })
-      : Promise.resolve([]),
-  ]);
+  let totalEmployees = 0;
+  let todayAttendance: any[] = [];
+  let pendingLeaves = 0;
+  let upcomingHolidays: any[] = [];
+  let recentPolicies: any[] = [];
+  let complianceIssues = 0;
+  let myLeaveBalances: any[] = [];
+
+  try {
+    [
+      totalEmployees,
+      todayAttendance,
+      pendingLeaves,
+      upcomingHolidays,
+      recentPolicies,
+      complianceIssues,
+      myLeaveBalances,
+    ] = await Promise.all([
+      orgId ? db.employee.count({ where: { organizationId: orgId, employmentStatus: "ACTIVE" } }) : 0,
+      orgId
+        ? db.attendanceRecord.findMany({
+            where: { date: today, employee: { organizationId: orgId } },
+          })
+        : [],
+      orgId
+        ? db.leaveRequest.count({
+            where: { status: "PENDING", employee: { organizationId: orgId } },
+          })
+        : 0,
+      orgId
+        ? db.holiday.findMany({
+            where: { organizationId: orgId, date: { gte: today } },
+            orderBy: { date: "asc" },
+            take: 4,
+          })
+        : [],
+      orgId
+        ? db.hrPolicy.findMany({
+            where: { organizationId: orgId },
+            orderBy: { updatedAt: "desc" },
+            take: 3,
+          })
+        : [],
+      orgId
+        ? db.complianceRecord.count({
+            where: { organizationId: orgId, status: { in: ["OVERDUE", "PENDING"] } },
+          })
+        : 0,
+      user?.employee
+        ? db.leaveBalance.findMany({
+            where: { employeeId: user.employee.id, year: today.getFullYear() },
+            include: { leavePolicy: true },
+          })
+        : Promise.resolve([]),
+    ]);
+  } catch (err: any) {
+    console.warn("[HR Module Page] Database query failed (cloud database paused):", err.message);
+  }
 
   const presentCount = todayAttendance.filter((r) => r.status === "PRESENT").length;
   const onLeaveCount = todayAttendance.filter((r) => r.status === "ON_LEAVE").length;
