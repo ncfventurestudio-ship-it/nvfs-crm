@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   compress: true,
   experimental: {
+    turbopackPluginRuntimeStrategy: "workerThreads",
     optimizePackageImports: [
       "lucide-react",
       "@tanstack/react-table",
