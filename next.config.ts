@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   compress: true,
   experimental: {
+    cpus: 2,
+    workerThreads: false,
     turbopackPluginRuntimeStrategy: "workerThreads",
     optimizePackageImports: [
       "lucide-react",
