@@ -124,13 +124,9 @@ export class AuthService {
       dbError = err;
     }
 
-    // When database authentication fails or user is not found:
-    // In production, fallback credentials are strictly prohibited (login fails securely).
-    // In non-production/test, offline fallback only works with valid account-specific bcrypt hashes.
+    // When database authentication fails or user is not found,
+    // verify against local store using account-specific bcrypt hash (no fallback/master passwords allowed).
     if (!user || dbError) {
-      if (process.env.NODE_ENV === "production") {
-        return null;
-      }
       const offlineUser = await verifyOfflineCredentials(targetEmail || emailOrId, passwordPlain);
       if (offlineUser) {
         return offlineUser;

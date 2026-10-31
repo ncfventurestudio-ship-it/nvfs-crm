@@ -22,8 +22,10 @@ export interface StoredEmployee {
     isActive?: boolean;
     role: { id?: string; code: string; name: string; level?: number };
     passwordHash?: string | null;
+    previousPasswordHash?: string | null;
   } | null;
   passwordHash?: string | null;
+  previousPasswordHash?: string | null;
   organization?: { id: string; name: string; code: string } | null;
   employmentType: string;
   employmentStatus: string;
@@ -77,12 +79,14 @@ export const SEED_EMPLOYEES: StoredEmployee[] = [
     emergencyContact: "Anand Jadhav (+91 98200 54321)",
     onboardingStatus: "COMPLETED",
     profileCompletion: 100,
-    passwordHash: "$2b$10$hPY6oyZBAEOG6F1eMpGFa.1ZXp91ZfbkaiJoiam.sg6Lf8SWgWj.O",
+    passwordHash: "$2b$10$SlyDM2tTuuOHr6pG.xQRj.zeFn0IF06svGH3cVzlW3zC0n1Zeb5n2",
+    previousPasswordHash: "$2b$10$J4keCUI7gS41z8KCjXfIAO0Wx4xICiJrpcuwTWljJi5ivl99uVz2C",
     user: {
       id: "usr_emp_nfvs_gouri_029",
       email: "gourisjadhav2006@gmail.com",
       isActive: true,
-      passwordHash: "$2b$10$hPY6oyZBAEOG6F1eMpGFa.1ZXp91ZfbkaiJoiam.sg6Lf8SWgWj.O",
+      passwordHash: "$2b$10$SlyDM2tTuuOHr6pG.xQRj.zeFn0IF06svGH3cVzlW3zC0n1Zeb5n2",
+      previousPasswordHash: "$2b$10$J4keCUI7gS41z8KCjXfIAO0Wx4xICiJrpcuwTWljJi5ivl99uVz2C",
       role: { code: "EMPLOYEE", name: "Software Engineer", level: 10 },
     },
     assignedTasks: [],

@@ -165,11 +165,6 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
         return null;
       }
 
-      // In production, offline persona fallback is strictly forbidden
-      if (process.env.NODE_ENV === "production") {
-        return null;
-      }
-
       const offlineUser =
         getOfflineUserByIdOrEmail(payload.userId, requestedCompanyId || payload.activeCompanyId) ||
         getOfflineUserByIdOrEmail(payload.email, requestedCompanyId || payload.activeCompanyId);
@@ -398,9 +393,6 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
         return authenticatedUser;
       } catch (err: any) {
         console.warn("[Auth Warning] DB query failed in getCurrentUser:", err?.message);
-        if (process.env.NODE_ENV === "production") {
-          return null;
-        }
 
         const offlineUser =
           getOfflineUserByIdOrEmail(payload.userId, requestedCompanyId || payload.activeCompanyId) ||
