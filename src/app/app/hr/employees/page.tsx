@@ -1396,7 +1396,7 @@ export default function EmployeeDirectoryPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, loginPassword: e.target.value })
                     }
-                    placeholder="Set custom password (default: Enterprise@2026)"
+                    placeholder="Set custom password (or auto-generate secure temporary password)"
                   />
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">
                     The employee will log into CRM using Corporate Email and this assigned password.

@@ -1,11 +1,24 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUser, hashPassword } from "@/lib/auth";
+import { getCurrentUser, hashPassword, generateSecureTemporaryPassword } from "@/lib/auth";
 import { AuditService } from "@/services/audit.service";
 import { RbacService } from "@/services/rbac.service";
 import { EmailService } from "@/services/email.service";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { z } from "zod";
+
+function sanitizeEmployeeResponse(emp: any) {
+  if (!emp) return emp;
+  const clone = { ...emp };
+  delete clone.loginPassword;
+  delete clone.passwordHash;
+  if (clone.user) {
+    clone.user = { ...clone.user };
+    delete clone.user.loginPassword;
+    delete clone.user.passwordHash;
+  }
+  return clone;
+}
 
 const createEmployeeSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -272,8 +285,9 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const responsePayload: any = employees;
-    responsePayload.employees = employees; // Dual compatibility for both json.data and json.data.employees
+    const sanitizedEmployees = employees.map(sanitizeEmployeeResponse);
+    const responsePayload: any = sanitizedEmployees;
+    responsePayload.employees = sanitizedEmployees; // Dual compatibility for both json.data and json.data.employees
 
     return successResponse(responsePayload, 200, {
       totalCount,
@@ -282,7 +296,7 @@ export async function GET(req: NextRequest) {
     } as any);
   } catch (error: any) {
     console.error("[Employees GET Fatal Error]:", error);
-    const fallbackEmployees = EmployeeStore.getByOrganization(targetOrgId);
+    const fallbackEmployees = EmployeeStore.getByOrganization(targetOrgId).map(sanitizeEmployeeResponse);
     const fallbackPayload: any = fallbackEmployees;
     fallbackPayload.employees = fallbackEmployees;
 
@@ -395,7 +409,7 @@ export async function POST(req: NextRequest) {
 
       const rawPassword = parse.data.loginPassword && parse.data.loginPassword.trim().length >= 6
         ? parse.data.loginPassword.trim()
-        : "Enterprise@2026";
+        : generateSecureTemporaryPassword();
 
       assignedPassword = rawPassword;
       assignedRoleName = role?.name || role?.code || (roleCode === "HR" ? "Human Resources Officer" : "Staff Employee");
@@ -624,14 +638,14 @@ export async function POST(req: NextRequest) {
       location: parse.data.location,
       emergencyContact: parse.data.emergencyContact?.trim() || null,
       hireDate: new Date(parse.data.hireDate).toISOString(),
-      loginPassword: assignedPassword || "Admin@123",
+      passwordHash: assignedPassword ? await hashPassword(assignedPassword) : null,
       user: createdUserId
         ? {
             id: createdUserId,
             email: corporateEmail,
             isActive: true,
             role: { code: parse.data.roleCode || "EMPLOYEE", name: assignedRoleName || "Staff Employee" },
-            loginPassword: assignedPassword || "Admin@123",
+            passwordHash: assignedPassword ? await hashPassword(assignedPassword) : null,
           }
         : null,
     });
@@ -716,7 +730,7 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
 
     return successResponse({
-      ...effectiveEmployee,
+      ...sanitizeEmployeeResponse(effectiveEmployee),
       emailDispatched: emailResult?.success ?? false,
       emailSimulated: emailResult?.simulated ?? false,
     }, 201);

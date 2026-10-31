@@ -21,10 +21,8 @@ export interface StoredEmployee {
     email?: string;
     isActive?: boolean;
     role: { id?: string; code: string; name: string; level?: number };
-    loginPassword?: string | null;
     passwordHash?: string | null;
   } | null;
-  loginPassword?: string | null;
   passwordHash?: string | null;
   organization?: { id: string; name: string; code: string } | null;
   employmentType: string;
@@ -79,10 +77,12 @@ export const SEED_EMPLOYEES: StoredEmployee[] = [
     emergencyContact: "Anand Jadhav (+91 98200 54321)",
     onboardingStatus: "COMPLETED",
     profileCompletion: 100,
+    passwordHash: "$2b$10$hPY6oyZBAEOG6F1eMpGFa.1ZXp91ZfbkaiJoiam.sg6Lf8SWgWj.O",
     user: {
       id: "usr_emp_nfvs_gouri_029",
       email: "gourisjadhav2006@gmail.com",
       isActive: true,
+      passwordHash: "$2b$10$hPY6oyZBAEOG6F1eMpGFa.1ZXp91ZfbkaiJoiam.sg6Lf8SWgWj.O",
       role: { code: "EMPLOYEE", name: "Software Engineer", level: 10 },
     },
     assignedTasks: [],
@@ -219,10 +219,12 @@ export const SEED_EMPLOYEES: StoredEmployee[] = [
     emergencyContact: "Ramesh Kale (+91 98765 99999)",
     onboardingStatus: "COMPLETED",
     profileCompletion: 100,
+    passwordHash: "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
     user: {
       id: "usr_hr_nfvs",
       email: "hr@nfvs.in",
       isActive: true,
+      passwordHash: "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
       role: { code: "HR", name: "Human Resources Officer", level: 50 },
     },
     assignedTasks: [],
@@ -293,10 +295,12 @@ export const SEED_EMPLOYEES: StoredEmployee[] = [
     emergencyContact: "Alok Sharma (+91 98765 54321)",
     onboardingStatus: "COMPLETED",
     profileCompletion: 100,
+    passwordHash: "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
     user: {
       id: "usr_hr_nf",
       email: "hr@nf.in",
       isActive: true,
+      passwordHash: "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
       role: { code: "HR", name: "Human Resources Officer", level: 50 },
     },
     assignedTasks: [],
@@ -555,7 +559,6 @@ export class EmployeeStore {
       managerId: data.managerId || null,
       manager: data.manager || null,
       user: data.user || null,
-      loginPassword: data.loginPassword || data.user?.loginPassword || null,
       passwordHash: data.passwordHash || data.user?.passwordHash || null,
       organization: data.organization || null,
       employmentType: data.employmentType || "FULL_TIME",

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "prisma generate && next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npx tsx scripts/verify-auth-security.ts",
+    "test:security": "npx tsx scripts/verify-auth-security.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

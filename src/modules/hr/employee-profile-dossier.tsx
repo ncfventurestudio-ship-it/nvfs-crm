@@ -2293,7 +2293,7 @@ export function EmployeeProfileDossier({
                   type="password"
                   value={resendPassword}
                   onChange={(e) => setResendPassword(e.target.value)}
-                  placeholder="Leave empty to use Enterprise@2026"
+                  placeholder="Leave empty to auto-generate a secure password"
                   className="w-full rounded-md border border-slate-800 bg-slate-900 p-2.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">

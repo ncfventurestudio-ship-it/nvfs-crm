@@ -20,14 +20,12 @@
       "id": "usr_naree_coo",
       "email": "coo@nf.in",
       "isActive": true,
-      "loginPassword": "Admin@123",
       "role": {
         "code": "COO",
         "name": "Chief Operating Officer",
         "level": 80
       }
     },
-    "loginPassword": "Admin@123",
     "passwordHash": null,
     "organization": {
       "id": "org_naree_foundation",
@@ -77,14 +75,12 @@
       "id": "usr_nfvs_coo",
       "email": "coo@nfvs.in",
       "isActive": true,
-      "loginPassword": "Admin@123",
       "role": {
         "code": "COO",
         "name": "Chief Operating Officer",
         "level": 80
       }
     },
-    "loginPassword": "Admin@123",
     "passwordHash": null,
     "organization": {
       "id": "org_nfvs_studio",
@@ -198,10 +194,14 @@
     "emergencyContact": "Anand Jadhav (+91 98200 54321)",
     "onboardingStatus": "COMPLETED",
     "profileCompletion": 100,
+    "passwordHash": "$2b$10$vDcEhS/D38cZ.GYqhItv.OYa3zdFDtPKApk1uEa.MmpZcQ8glMvLy",
+    "passwordHash": "$2b$10$hPY6oyZBAEOG6F1eMpGFa.1ZXp91ZfbkaiJoiam.sg6Lf8SWgWj.O",
     "user": {
       "id": "usr_emp_nfvs_gouri_029",
       "email": "gourisjadhav2006@gmail.com",
       "isActive": true,
+      "passwordHash": "$2b$10$vDcEhS/D38cZ.GYqhItv.OYa3zdFDtPKApk1uEa.MmpZcQ8glMvLy",
+      "passwordHash": "$2b$10$hPY6oyZBAEOG6F1eMpGFa.1ZXp91ZfbkaiJoiam.sg6Lf8SWgWj.O",
       "role": {
         "code": "EMPLOYEE",
         "name": "Software Engineer",
@@ -215,7 +215,7 @@
     "activeTasksCount": 0,
     "activeOpsCount": 0,
     "createdAt": "2024-03-01T00:00:00.000Z",
-    "updatedAt": "2026-10-17T00:00:00.000Z"
+    "updatedAt": "2026-10-31T08:23:41.068Z"
   },
   {
     "id": "emp_nfvs_rahul_042",
@@ -385,11 +385,13 @@
     "hireDate": "2024-01-15T00:00:00.000Z",
     "emergencyContact": "Ramesh Kale (+91 98765 99999)",
     "onboardingStatus": "COMPLETED",
-    "profileCompletion": 100,
+    "profileCompletion": 30,
+    "passwordHash": "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
     "user": {
       "id": "usr_hr_nfvs",
       "email": "hr@nfvs.in",
       "isActive": true,
+      "passwordHash": "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
       "role": {
         "code": "HR",
         "name": "Human Resources Officer",
@@ -403,7 +405,7 @@
     "activeTasksCount": 0,
     "activeOpsCount": 0,
     "createdAt": "2024-01-15T00:00:00.000Z",
-    "updatedAt": "2026-10-17T00:00:00.000Z"
+    "updatedAt": "2026-10-31T08:13:54.396Z"
   },
   {
     "id": "emp_superadmin_01",
@@ -480,10 +482,12 @@
     "emergencyContact": "Alok Sharma (+91 98765 54321)",
     "onboardingStatus": "COMPLETED",
     "profileCompletion": 100,
+    "passwordHash": "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
     "user": {
       "id": "usr_hr_nf",
       "email": "hr@nf.in",
       "isActive": true,
+      "passwordHash": "$2b$10$hAD.TYLMSlHFNwGbfbvC9uEztU8ud.AEcbxf9Iw4v22vjJyGki.ge",
       "role": {
         "code": "HR",
         "name": "Human Resources Officer",

@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { cookies } from "next/headers";
 import { db } from "./db";
 import {
@@ -19,7 +20,20 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (!hash || !isValidBcryptHash(hash)) {
+    return false;
+  }
   return bcrypt.compare(password, hash);
+}
+
+export function isValidBcryptHash(hash: unknown): boolean {
+  if (typeof hash !== "string") return false;
+  return /^\$2[aby]?\$\d{2}\$[./0-9A-Za-z]{53}$/.test(hash);
+}
+
+export function generateSecureTemporaryPassword(): string {
+  const randomSuffix = crypto.randomBytes(8).toString("hex");
+  return `Nfvs@${randomSuffix}!`;
 }
 
 export interface SessionPayload {
@@ -145,11 +159,22 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
     });
 
     if (!user || !user.isActive) {
+      userSessionMemoryCache.delete(payload.userId);
+      // Inactive database accounts must remain strictly rejected with no fallbacks
+      if (user && !user.isActive) {
+        return null;
+      }
+
+      // In production, offline persona fallback is strictly forbidden
+      if (process.env.NODE_ENV === "production") {
+        return null;
+      }
+
       const offlineUser =
         getOfflineUserByIdOrEmail(payload.userId, requestedCompanyId || payload.activeCompanyId) ||
         getOfflineUserByIdOrEmail(payload.email, requestedCompanyId || payload.activeCompanyId);
 
-      if (offlineUser) {
+      if (offlineUser && offlineUser.isActive) {
         userSessionMemoryCache.set(payload.userId, {
           user: offlineUser,
           cachedAt: now,
@@ -158,7 +183,6 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
         return offlineUser;
       }
 
-      userSessionMemoryCache.delete(payload.userId);
       return null;
     }
 
@@ -373,12 +397,16 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Aut
 
         return authenticatedUser;
       } catch (err: any) {
-        console.warn("[Auth Warning] DB query failed, resolving user via offline/persona store:", err?.message);
+        console.warn("[Auth Warning] DB query failed in getCurrentUser:", err?.message);
+        if (process.env.NODE_ENV === "production") {
+          return null;
+        }
+
         const offlineUser =
           getOfflineUserByIdOrEmail(payload.userId, requestedCompanyId || payload.activeCompanyId) ||
           getOfflineUserByIdOrEmail(payload.email, requestedCompanyId || payload.activeCompanyId);
 
-        if (offlineUser) {
+        if (offlineUser && offlineUser.isActive) {
           userSessionMemoryCache.set(payload.userId, {
             user: offlineUser,
             cachedAt: now,

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, generateSecureTemporaryPassword } from "@/lib/auth";
 import { AuditService } from "@/services/audit.service";
 import { NotificationService } from "@/services/notification.service";
 import { EmployeeStore, StoredEmployee } from "@/lib/employee-store";
@@ -530,7 +530,7 @@ export class EmployeeOnboardingService {
       if (role && effectiveEmail) {
         const existingUser = await db.user.findUnique({ where: { email: effectiveEmail } });
         if (!existingUser) {
-          const rawPassword = pwd.length >= 6 ? pwd : "Enterprise@2026";
+          const rawPassword = pwd.length >= 6 ? pwd : generateSecureTemporaryPassword();
           const passwordHash = await hashPassword(rawPassword);
           const createdUser = await db.user.create({
             data: {
@@ -817,8 +817,9 @@ export class EmployeeOnboardingService {
     };
 
     if (newPassword && stored.user) {
-      stored.user.loginPassword = newPassword;
-      employeeUpdates.loginPassword = newPassword;
+      const pHash = await hashPassword(newPassword);
+      stored.user.passwordHash = pHash;
+      employeeUpdates.passwordHash = pHash;
     }
 
     EmployeeStore.update(stored.id, employeeUpdates);

@@ -6,6 +6,7 @@ import {
   UserCompanyMembershipSummary,
 } from "@/types";
 import { EmployeeStore, StoredEmployee } from "@/lib/employee-store";
+import { isValidBcryptHash } from "@/lib/auth";
 
 export const ORG_NFVS_STUDIO: CompanySummary = {
   id: "org_nfvs_studio",
@@ -247,19 +248,6 @@ export const ALL_PERSONAS: PersonaSpec[] = [
   },
 ];
 
-export const MASTER_PASSWORDS = new Set([
-  "Admin@123",
-  "admin@123",
-  "Admin123",
-  "admin123",
-  "Enterprise@2026",
-  "enterprise@2026",
-  "password",
-  "123456",
-  "sayalikale@123",
-  "Nfventurestudio@123",
-]);
-
 /**
  * Build AuthenticatedUser for a persona
  */
@@ -455,69 +443,46 @@ export async function verifyOfflineCredentials(
   emailOrId: string,
   passwordPlain: string
 ): Promise<AuthenticatedUser | null> {
+  // In production, offline fallback authentication is strictly forbidden
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  if (!emailOrId || !passwordPlain) return null;
   const raw = emailOrId.trim().toLowerCase();
-  const isMasterPass = MASTER_PASSWORDS.has(passwordPlain);
 
   // 1. Check if email/ID belongs to any employee in EmployeeStore (e.g. HR-created employees)
-  const storedEmployee = EmployeeStore.findByEmailOrNumber(raw);
+  let storedEmployee = EmployeeStore.findByEmailOrNumber(raw);
+  if (!storedEmployee) {
+    if (["hr", "hr_id", "hrid", "hr_nfvs", "hr1", "hr@crm.com", "hr_studio", "chro"].includes(raw)) {
+      storedEmployee = EmployeeStore.findByEmailOrNumber("hr@nfvs.in");
+    } else if (["hr_naree", "hr-naree", "naree_hr", "hr_nf", "hr2", "hr_foundation"].includes(raw)) {
+      storedEmployee = EmployeeStore.findByEmailOrNumber("hr@nf.in");
+    }
+  }
   if (storedEmployee) {
-    let passwordMatches = isMasterPass;
+    const userHash = storedEmployee.user?.passwordHash || storedEmployee.passwordHash;
+    const isUserActive = storedEmployee.user?.isActive ?? (storedEmployee.employmentStatus === "ACTIVE");
 
-    if (!passwordMatches && storedEmployee.loginPassword) {
-      passwordMatches = storedEmployee.loginPassword === passwordPlain;
+    // Reject inactive, suspended or deleted accounts
+    if (!isUserActive) {
+      return null;
     }
 
-    if (!passwordMatches && storedEmployee.user?.passwordHash) {
-      try {
-        passwordMatches = await bcrypt.compare(passwordPlain, storedEmployee.user.passwordHash);
-      } catch {}
+    // Missing or malformed password hash rejected safely
+    if (!userHash || !isValidBcryptHash(userHash)) {
+      return null;
     }
 
-    // Also accept default seed fallback password if provided
-    if (!passwordMatches && passwordPlain === "Enterprise@2026") {
-      passwordMatches = true;
+    let passwordMatches = false;
+    try {
+      passwordMatches = await bcrypt.compare(passwordPlain, userHash);
+    } catch {
+      return null;
     }
 
     if (passwordMatches) {
       return buildEmployeeStoreUser(storedEmployee);
-    }
-  }
-
-  // 2. Check Role Persona Matches
-  // Determine target company: NFVS vs NAREE
-  const isNareeDomain =
-    raw.endsWith("@nf.in") ||
-    raw.includes("naree") ||
-    raw.includes("foundation") && !raw.includes("venture");
-
-  const companyType: "NFVS" | "NAREE" = isNareeDomain ? "NAREE" : "NFVS";
-
-  // Check full email matches or prefix matches
-  for (const persona of ALL_PERSONAS) {
-    const nfvsEmail = `${persona.emailPrefix}@nfvs.in`;
-    const nareeEmail = `${persona.emailPrefix}@nf.in`;
-    const internalNfvs = `${persona.emailPrefix}@nfvs.internal`;
-    const internalNaree = `${persona.emailPrefix}@naree.internal`;
-
-    const isMatch =
-      raw === nfvsEmail ||
-      raw === nareeEmail ||
-      raw === internalNfvs ||
-      raw === internalNaree ||
-      raw === persona.emailPrefix ||
-      raw === persona.roleCode.toLowerCase() ||
-      (persona.roleCode === "SUPER_ADMIN" && (raw === "admin" || raw === "superadmin")) ||
-      (persona.roleCode === "CEO" && (raw === "nfvs@crm.com" || raw === "naree@crm.com")) ||
-      (persona.roleCode === "HR" && (raw === "hr@crm.com" || raw === "pooja.sharma@nareefoundation.org"));
-
-    if (isMatch) {
-      if (isMasterPass) {
-        const resolvedCompany =
-          raw.includes("naree") || raw.endsWith("@nf.in") || raw === "naree@crm.com"
-            ? "NAREE"
-            : companyType;
-        return buildPersonaUser(persona, resolvedCompany, raw.includes("@") ? raw : undefined);
-      }
     }
   }
 
@@ -531,16 +496,20 @@ export function getOfflineUserByIdOrEmail(
   idOrEmail: string,
   requestedCompanyId?: string | null
 ): AuthenticatedUser | null {
+  // In production, offline persona fallback is strictly forbidden
+  if (process.env.NODE_ENV === "production") return null;
   if (!idOrEmail) return null;
   const raw = idOrEmail.trim().toLowerCase();
 
   // 1. Check EmployeeStore
   const storedEmp = EmployeeStore.findByEmailOrNumber(raw);
   if (storedEmp) {
+    const isUserActive = storedEmp.user?.isActive ?? (storedEmp.employmentStatus === "ACTIVE");
+    if (!isUserActive) return null;
     return buildEmployeeStoreUser(storedEmp, requestedCompanyId);
   }
 
-  // 2. Check Personas by user ID, emp ID, or email
+  // 2. Check Personas by exact user ID, emp ID, or corporate email
   for (const persona of ALL_PERSONAS) {
     const isNfvsId =
       raw === `usr_nfvs_${persona.emailPrefix}` ||
@@ -569,31 +538,6 @@ export function getOfflineUserByIdOrEmail(
       }
       return user;
     }
-  }
-
-  // 3. Fallback for generic handles
-  if (raw.includes("superadmin") || raw.includes("admin")) {
-    return buildPersonaUser(ALL_PERSONAS[0], "NFVS");
-  }
-
-  if (raw.includes("coo")) {
-    const comp = raw.includes("nf.") ? "NAREE" : "NFVS";
-    return buildPersonaUser(ALL_PERSONAS.find((p) => p.roleCode === "COO")!, comp);
-  }
-
-  if (raw.includes("cfo")) {
-    const comp = raw.includes("nf.") ? "NAREE" : "NFVS";
-    return buildPersonaUser(ALL_PERSONAS.find((p) => p.roleCode === "CFO")!, comp);
-  }
-
-  if (raw.includes("hr")) {
-    const comp = raw.includes("naree") || raw.includes("nf.") ? "NAREE" : "NFVS";
-    return buildPersonaUser(ALL_PERSONAS.find((p) => p.roleCode === "HR")!, comp);
-  }
-
-  if (raw.includes("ceo")) {
-    const comp = raw.includes("naree") || raw.includes("nf.") ? "NAREE" : "NFVS";
-    return buildPersonaUser(ALL_PERSONAS.find((p) => p.roleCode === "CEO")!, comp);
   }
 
   return null;
@@ -720,12 +664,10 @@ export function getOfflinePersonaEmployee(idOrQuery: string): StoredEmployee | n
     emergencyContact: `${firstName} Next of Kin (+91 98200 99887)`,
     onboardingStatus: "COMPLETED",
     profileCompletion: 100,
-    loginPassword: "Admin@123",
     user: {
       id: userId,
       email,
       isActive: true,
-      loginPassword: "Admin@123",
       role: {
         code: matchedPersona.roleCode,
         name: matchedPersona.roleName,

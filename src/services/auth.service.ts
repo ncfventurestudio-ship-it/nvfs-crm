@@ -2,9 +2,13 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { AuthenticatedUser, SystemRoleCode } from "@/types";
 import { verifyOfflineCredentials } from "@/lib/offline-auth";
+import { isValidBcryptHash } from "@/lib/auth";
 
 export class AuthService {
   static async verifyCredentials(emailOrId: string, passwordPlain: string) {
+    if (!emailOrId || typeof emailOrId !== "string" || !passwordPlain || typeof passwordPlain !== "string") {
+      return null;
+    }
     const raw = emailOrId.trim().toLowerCase();
     let targetEmail = raw;
 
@@ -120,30 +124,38 @@ export class AuthService {
       dbError = err;
     }
 
-    // Comprehensive Offline / EmployeeStore / Persona Credentials Verification
+    // When database authentication fails or user is not found:
+    // In production, fallback credentials are strictly prohibited (login fails securely).
+    // In non-production/test, offline fallback only works with valid account-specific bcrypt hashes.
     if (!user || dbError) {
-      const offlineUser = await verifyOfflineCredentials(emailOrId, passwordPlain);
+      if (process.env.NODE_ENV === "production") {
+        return null;
+      }
+      const offlineUser = await verifyOfflineCredentials(targetEmail || emailOrId, passwordPlain);
       if (offlineUser) {
         return offlineUser;
       }
       return null;
     }
 
+    // Reject inactive, suspended or deleted accounts
     if (!user.isActive) {
       return null;
     }
 
+    // Reject accounts with missing or malformed password hashes safely
+    if (!user.passwordHash || !isValidBcryptHash(user.passwordHash)) {
+      console.warn(`[Auth Security] Rejecting login for ${targetEmail}: password hash missing or malformed.`);
+      return null;
+    }
+
+    // Every normal email/password login MUST verify the submitted password
+    // against that specific user's stored bcrypt hash. No universal or master passwords.
     let isValid = false;
-    if (
-      passwordPlain === "password" ||
-      passwordPlain === "Enterprise@2026" ||
-      passwordPlain === "Admin@123" ||
-      passwordPlain === "123456" ||
-      passwordPlain === "sayalikale@123"
-    ) {
-      isValid = true;
-    } else {
+    try {
       isValid = await bcrypt.compare(passwordPlain, user.passwordHash);
+    } catch {
+      return null;
     }
 
     if (!isValid) {

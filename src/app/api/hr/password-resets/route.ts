@@ -6,6 +6,7 @@ import { EmailService } from "@/services/email.service";
 import { AuditService } from "@/services/audit.service";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { PasswordResetsStore } from "@/lib/password-resets-store";
+import { EmployeeStore } from "@/lib/employee-store";
 import { findRegisteredEmployee } from "@/lib/employee-directory";
 
 export async function GET(req: NextRequest) {
@@ -195,9 +196,10 @@ export async function POST(req: NextRequest) {
       PasswordResetsStore.markApproved(requestId || employeeId, approverInfo);
     }
 
-    // 4. Update Database user and employeeRequest if available
+    // 4. Update Database user and EmployeeStore with new password hash
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
     try {
-      const passwordHash = await bcrypt.hash(newPassword, 10);
       const userId = employee.user?.id || employee.userId;
 
       if (userId) {
@@ -221,7 +223,31 @@ export async function POST(req: NextRequest) {
         });
       }
     } catch (dbErr: any) {
-      console.warn("[POST Password Resets] DB update warning (user credentials saved to response):", dbErr.message);
+      console.warn("[POST Password Resets] DB update warning (user credentials saved to store):", dbErr.message);
+    }
+
+    // Resilient local persistence in EmployeeStore (ensures login works immediately)
+    const empInStore =
+      EmployeeStore.getById(employee.id) ||
+      EmployeeStore.findByEmailOrNumber(employee.email || employee.id);
+
+    if (empInStore) {
+      EmployeeStore.update(empInStore.id, {
+        passwordHash,
+        user: empInStore.user
+          ? {
+              ...empInStore.user,
+              passwordHash,
+              isActive: true,
+            }
+          : {
+              id: `usr_${empInStore.id}`,
+              email: empInStore.email,
+              isActive: true,
+              passwordHash,
+              role: { code: "EMPLOYEE", name: "Staff Employee", level: 10 },
+            },
+      });
     }
 
     // 5. Send updated credentials to employee via Email
@@ -341,7 +367,6 @@ export async function POST(req: NextRequest) {
       employeeName: resolvedEmployeeName,
       employeeNumber: resolvedEmployeeNumber,
       employeeEmail: targetEmail,
-      newPassword,
       emailDispatched: emailResult.success,
       simulated: emailResult.simulated,
     });

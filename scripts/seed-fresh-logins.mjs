@@ -6,8 +6,15 @@ const prisma = new PrismaClient({
   datasources: { db: { url: process.env.DIRECT_URL || process.env.DATABASE_URL } },
 });
 
-// ─── Universal Password ───────────────────────────────────────────────────────
-const UNIVERSAL_PASSWORD = "Admin@123";
+// ─── Environment Isolation Check ──────────────────────────────────────────────
+if (process.env.NODE_ENV === "production") {
+  console.error("FATAL: Seed scripts with default test credentials must NEVER run in production!");
+  process.exit(1);
+}
+
+// ─── Isolated Test-Only Seed Password ─────────────────────────────────────────
+// This is strictly used to seed local development/test fixtures and must never be used in production.
+const SEED_TEST_PASSWORD = process.env.TEST_SEED_PASSWORD || "TestAccount@2026!";
 
 // ─── Domain mapping ───────────────────────────────────────────────────────────
 // NFVS → @nfvs.in  |  NAREE → @nf.in
@@ -48,7 +55,7 @@ async function main() {
   console.log("  PURGING ALL OLD ACCOUNTS & SEEDING FRESH ROLE-BASED LOGIN CREDENTIALS");
   console.log("================================================================================\n");
 
-  const hashedPassword = await bcrypt.hash(UNIVERSAL_PASSWORD, 10);
+  const hashedPassword = await bcrypt.hash(SEED_TEST_PASSWORD, 10);
 
   // ── 1. Fetch organizations ──────────────────────────────────────────────────
   const orgs = await prisma.organization.findMany();
@@ -165,7 +172,7 @@ async function main() {
         org:    `${orgCode} (${org.name})`,
         role:   role.code,
         email,
-        password: UNIVERSAL_PASSWORD,
+        password: SEED_TEST_PASSWORD,
       });
 
       console.log(`  ✓ [${role.code.padEnd(15)}] ${email}`);
@@ -176,7 +183,7 @@ async function main() {
 
   // ── 6. Print credentials table ──────────────────────────────────────────────
   console.log("================================================================================");
-  console.log("  FRESH CREDENTIALS — ALL ACCOUNTS");
+  console.log("  TEST CREDENTIALS (DEVELOPMENT FIXTURE ONLY)");
   console.log("================================================================================\n");
 
   const nfvsRows  = seededList.filter((r) => r.org.startsWith("NFVS"));
@@ -192,7 +199,7 @@ async function main() {
     console.log(`  ${r.role.padEnd(16)} | ${r.email.padEnd(28)} | ${r.password}`)
   );
 
-  console.log(`\n  Universal Password: ${UNIVERSAL_PASSWORD}`);
+  console.log(`\n  Seeded Test Password: ${SEED_TEST_PASSWORD}`);
   console.log(`  Total accounts created: ${seededList.length}`);
   console.log("================================================================================");
   console.log("  DONE!");

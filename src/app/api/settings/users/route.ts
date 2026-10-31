@@ -1,9 +1,15 @@
 import { NextRequest } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, generateSecureTemporaryPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { AuditService } from "@/services/audit.service";
 import bcrypt from "bcryptjs";
+
+function sanitizeUser(userObj: any) {
+  if (!userObj) return userObj;
+  const { passwordHash, ...rest } = userObj;
+  return rest;
+}
 
 export async function GET() {
   try {
@@ -27,7 +33,7 @@ export async function GET() {
       db.department.findMany({ orderBy: { name: "asc" } }),
     ]);
 
-    return successResponse({ users, roles, departments });
+    return successResponse({ users: users.map(sanitizeUser), roles, departments });
   } catch (error: any) {
     console.error("[Settings Users GET Error]:", error);
     return errorResponse(error.message || "Failed to fetch users", "INTERNAL_ERROR", 500);
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
         newValue: { isActive: updated.isActive },
       });
 
-      return successResponse(updated);
+      return successResponse(sanitizeUser(updated));
     }
 
     if (action === "UPDATE_ROLE" && userId && roleId) {
@@ -85,7 +91,7 @@ export async function POST(req: NextRequest) {
         newValue: { role: updated.role.code },
       });
 
-      return successResponse(updated);
+      return successResponse(sanitizeUser(updated));
     }
 
     if (action === "RESET_PASSWORD" && userId && newPassword) {
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
       const existing = await db.user.findUnique({ where: { email } });
       if (existing) return errorResponse("User with this email already exists", "DUPLICATE", 400);
 
-      const defaultPassword = newPassword || "Enterprise@2026";
+      const defaultPassword = newPassword || generateSecureTemporaryPassword();
       const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
       const count = await db.employee.count();
@@ -149,7 +155,7 @@ export async function POST(req: NextRequest) {
         newValue: { email, role: newUser.role.code, employeeNumber },
       });
 
-      return successResponse(newUser, 201);
+      return successResponse(sanitizeUser(newUser), 201);
     }
 
     return errorResponse("Invalid action parameter", "INVALID_ACTION", 400);
